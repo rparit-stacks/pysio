@@ -1,0 +1,372 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+
+
+
+
+
+
+
+
+model City {
+  id            Int           @id @default(autoincrement())
+  name          String        @db.VarChar(100)
+  county        String        @db.VarChar(50)
+  eircodePrefix String?       @map("eircode_prefix") @db.VarChar(3)
+  latitude      Decimal?      @db.Decimal(10, 8)
+  longitude     Decimal?      @db.Decimal(11, 8)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  clinics       Clinic[]
+  userAddresses UserAddress[]
+
+  @@index([county, name], map: "idx_county_city")
+  @@map("cities")
+}
+
+model UserRole {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(50)
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  users       User[]
+
+  @@map("user_roles")
+}
+
+model User {
+  id                     Int                     @id @default(autoincrement())
+  email                  String                  @unique @db.VarChar(255)
+  passwordHash           String                  @map("password_hash") @db.VarChar(255)
+  firstName              String                  @map("first_name") @db.VarChar(100)
+  lastName               String                  @map("last_name") @db.VarChar(100)
+  phone                  String?                 @db.VarChar(20)
+  dateOfBirth            DateTime?               @map("date_of_birth") @db.Date
+  gender                 Gender?
+  roleId                 Int                     @map("role_id")
+  ppsNumber              String?                 @map("pps_number") @db.VarChar(20)
+  emailVerified          Boolean                 @default(false) @map("email_verified")
+  phoneVerified          Boolean                 @default(false) @map("phone_verified")
+  isActive               Boolean                 @default(true) @map("is_active")
+  createdAt              DateTime                @default(now()) @map("created_at")
+  updatedAt              DateTime                @default(now()) @updatedAt @map("updated_at")
+  bookingsAsPatient      Booking[]               @relation("PatientBookings")
+  notifications          Notification[]
+  patientMedicalHistory  PatientMedicalHistory[]
+  physiotherapistProfile PhysiotherapistProfile?
+  reviews                Review[]
+  addresses              UserAddress[]
+  role                   UserRole                @relation(fields: [roleId], references: [id])
+ 
+  @@index([email], map: "idx_email")
+  @@index([roleId], map: "idx_role")
+  @@map("users")
+}
+
+model UserAddress {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @map("user_id")
+  addressLine1 String   @map("address_line_1") @db.VarChar(255)
+  addressLine2 String?  @map("address_line_2") @db.VarChar(255)
+  cityId       Int      @map("city_id")
+  eircode      String?  @db.VarChar(10)
+  latitude     Decimal? @db.Decimal(10, 8)
+  longitude    Decimal? @db.Decimal(11, 8)
+  isPrimary    Boolean  @default(false) @map("is_primary")
+  createdAt    DateTime @default(now()) @map("created_at")
+  city         City     @relation(fields: [cityId], references: [id])
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_user_address_user")
+  @@index([latitude, longitude], map: "idx_user_address_location")
+  @@map("user_addresses")
+}
+
+model Specialization {
+  id                             Int                             @id @default(autoincrement())
+  name                           String                          @unique @db.VarChar(100)
+  description                    String?
+  isActive                       Boolean                         @default(true) @map("is_active")
+  createdAt                      DateTime                        @default(now()) @map("created_at")
+  bookings                       Booking[]                       @relation("TreatmentType")
+  physiotherapistSpecializations PhysiotherapistSpecialization[]
+
+  @@map("specializations")
+}
+
+model PhysiotherapistProfile {
+  id                    Int                             @id @default(autoincrement())
+  userId                Int                             @unique @map("user_id")
+  coruRegistration      String?                         @map("coru_registration") @db.VarChar(50)
+  qualification         String?                         @db.VarChar(255)
+  yearsExperience       Int?                            @map("years_experience")
+  bio                   String?
+  hourlyRate            Decimal?                        @map("hourly_rate") @db.Decimal(8, 2)
+  profileImageUrl       String?                         @map("profile_image_url") @db.VarChar(500)
+  isVerified            Boolean                         @default(false) @map("is_verified")
+  isAvailable           Boolean                         @default(true) @map("is_available")
+  createdAt             DateTime                        @default(now()) @map("created_at")
+  updatedAt             DateTime                        @default(now()) @updatedAt @map("updated_at")
+  availabilityTemplates AvailabilityTemplate[]
+  bookings              Booking[]
+  clinicAssociations    PhysiotherapistClinic[]
+  user                  User                            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  specializations       PhysiotherapistSpecialization[]
+  reviews               Review[]
+  specificAvailability  SpecificAvailability[]
+
+  @@index([userId], map: "idx_user")
+  @@index([hourlyRate], map: "idx_rate")
+  @@index([isAvailable], map: "idx_available")
+  @@map("physiotherapist_profiles")
+}
+
+model PhysiotherapistSpecialization {
+  physiotherapistId Int                    @map("physiotherapist_id")
+  specializationId  Int                    @map("specialization_id")
+  physiotherapist   PhysiotherapistProfile @relation(fields: [physiotherapistId], references: [id], onDelete: Cascade)
+  specialization    Specialization         @relation(fields: [specializationId], references: [id], onDelete: Cascade)
+
+  @@id([physiotherapistId, specializationId])
+  @@map("physiotherapist_specializations")
+}
+
+model Clinic {
+  id                     Int                     @id @default(autoincrement())
+  name                   String                  @db.VarChar(255)
+  addressLine1           String                  @map("address_line_1") @db.VarChar(255)
+  addressLine2           String?                 @map("address_line_2") @db.VarChar(255)
+  cityId                 Int                     @map("city_id")
+  eircode                String?                 @db.VarChar(10)
+  phone                  String?                 @db.VarChar(20)
+  email                  String?                 @db.VarChar(255)
+  websiteUrl             String?                 @map("website_url") @db.VarChar(500)
+  latitude               Decimal?                @db.Decimal(10, 8)
+  longitude              Decimal?                @db.Decimal(11, 8)
+  isActive               Boolean                 @default(true) @map("is_active")
+  createdAt              DateTime                @default(now()) @map("created_at")
+  availabilityTemplates  AvailabilityTemplate[]
+  bookings               Booking[]
+  city                   City                    @relation(fields: [cityId], references: [id])
+  physiotherapistClinics PhysiotherapistClinic[]
+  specificAvailability   SpecificAvailability[]
+
+  @@index([latitude, longitude], map: "idx_clinic_location")
+  @@index([cityId], map: "idx_clinic_city")
+  @@map("clinics")
+}
+
+model PhysiotherapistClinic {
+  id                Int                    @id @default(autoincrement())
+  physiotherapistId Int                    @map("physiotherapist_id")
+  clinicId          Int                    @map("clinic_id")
+  isPrimary         Boolean                @default(false) @map("is_primary")
+  startDate         DateTime?              @map("start_date") @db.Date
+  endDate           DateTime?              @map("end_date") @db.Date
+  createdAt         DateTime               @default(now()) @map("created_at")
+  clinic            Clinic                 @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  physiotherapist   PhysiotherapistProfile @relation(fields: [physiotherapistId], references: [id], onDelete: Cascade)
+
+  @@index([physiotherapistId, clinicId], map: "idx_physio_clinic")
+  @@map("physiotherapist_clinics")
+}
+
+model AvailabilityTemplate {
+  id                Int                    @id @default(autoincrement())
+  physiotherapistId Int                    @map("physiotherapist_id")
+  dayOfWeek         Int                    @map("day_of_week")
+  startTime         String                 @map("start_time") @db.VarChar(5)
+  endTime           String                 @map("end_time") @db.VarChar(5)
+  clinicId          Int?                   @map("clinic_id")
+  isActive          Boolean                @default(true) @map("is_active")
+  createdAt         DateTime               @default(now()) @map("created_at")
+  clinic            Clinic?                @relation(fields: [clinicId], references: [id])
+  physiotherapist   PhysiotherapistProfile @relation(fields: [physiotherapistId], references: [id], onDelete: Cascade)
+
+  @@index([physiotherapistId, dayOfWeek], map: "idx_availability_physio_day")
+  @@map("availability_templates")
+}
+
+model SpecificAvailability {
+  id                Int                    @id @default(autoincrement())
+  physiotherapistId Int                    @map("physiotherapist_id")
+  date              DateTime               @db.Date
+  startTime         String                 @map("start_time") @db.VarChar(5)
+  endTime           String                 @map("end_time") @db.VarChar(5)
+  clinicId          Int?                   @map("clinic_id")
+  isAvailable       Boolean                @default(true) @map("is_available")
+  reason            String?                @db.VarChar(255)
+  createdAt         DateTime               @default(now()) @map("created_at")
+  clinic            Clinic?                @relation(fields: [clinicId], references: [id])
+  physiotherapist   PhysiotherapistProfile @relation(fields: [physiotherapistId], references: [id], onDelete: Cascade)
+
+  @@index([physiotherapistId, date], map: "idx_specific_physio_date")
+  @@map("specific_availability")
+}
+
+model BookingStatus {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique @db.VarChar(50)
+  description String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  bookings    Booking[]
+
+  @@map("booking_statuses")
+}
+
+model Booking {
+  id                 Int                    @id @default(autoincrement())
+  bookingReference   String                 @unique @map("booking_reference") @db.VarChar(20)
+  patientId          Int                    @map("patient_id")
+  physiotherapistId  Int                    @map("physiotherapist_id")
+  clinicId           Int                    @map("clinic_id")
+  appointmentDate    DateTime               @map("appointment_date") @db.Date
+  appointmentTime    String                 @map("appointment_time") @db.VarChar(5)
+  durationMinutes    Int                    @default(60) @map("duration_minutes")
+  statusId           Int                    @map("status_id")
+  treatmentTypeId    Int?                   @map("treatment_type_id")
+  totalAmount        Decimal?               @map("total_amount") @db.Decimal(8, 2)
+  patientNotes       String?                @map("patient_notes")
+  therapistNotes     String?                @map("therapist_notes")
+  cancellationReason String?                @map("cancellation_reason")
+  cancelledAt        DateTime?              @map("cancelled_at")
+  createdAt          DateTime               @default(now()) @map("created_at")
+  updatedAt          DateTime               @default(now()) @updatedAt @map("updated_at")
+  clinic             Clinic                 @relation(fields: [clinicId], references: [id])
+  patient            User                   @relation("PatientBookings", fields: [patientId], references: [id])
+  physiotherapist    PhysiotherapistProfile @relation(fields: [physiotherapistId], references: [id])
+  status             BookingStatus          @relation(fields: [statusId], references: [id])
+  treatmentType      Specialization?        @relation("TreatmentType", fields: [treatmentTypeId], references: [id])
+  payments           Payment[]
+  reviews            Review[]
+  treatmentSessions  TreatmentSession[]
+
+  @@index([patientId], map: "idx_booking_patient")
+  @@index([physiotherapistId], map: "idx_booking_physiotherapist")
+  @@index([appointmentDate, appointmentTime], map: "idx_booking_appointment")
+  @@index([statusId], map: "idx_booking_status")
+  @@map("bookings")
+}
+
+model PaymentMethod {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique @db.VarChar(50)
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at")
+  payments  Payment[]
+
+  @@map("payment_methods")
+}
+
+model Payment {
+  id                    Int           @id @default(autoincrement())
+  bookingId             Int           @map("booking_id")
+  paymentMethodId       Int           @map("payment_method_id")
+  amount                Decimal       @db.Decimal(8, 2)
+  currency              String        @default("EUR") @db.VarChar(3)
+  stripePaymentIntentId String?       @map("stripe_payment_intent_id") @db.VarChar(255)
+  transactionId         String?       @map("transaction_id") @db.VarChar(255)
+  status                PaymentStatus @default(pending)
+  processedAt           DateTime?     @map("processed_at")
+  createdAt             DateTime      @default(now()) @map("created_at")
+  booking               Booking       @relation(fields: [bookingId], references: [id])
+  paymentMethod         PaymentMethod @relation(fields: [paymentMethodId], references: [id])
+
+  @@index([bookingId], map: "idx_payment_booking")
+  @@index([status], map: "idx_payment_status")
+  @@map("payments")
+}
+
+model Review {
+  id                Int                    @id @default(autoincrement())
+  bookingId         Int                    @map("booking_id")
+  patientId         Int                    @map("patient_id")
+  physiotherapistId Int                    @map("physiotherapist_id")
+  rating            Int
+  reviewText        String?                @map("review_text")
+  isAnonymous       Boolean                @default(false) @map("is_anonymous")
+  isApproved        Boolean                @default(false) @map("is_approved")
+  createdAt         DateTime               @default(now()) @map("created_at")
+  booking           Booking                @relation(fields: [bookingId], references: [id])
+  patient           User                   @relation(fields: [patientId], references: [id])
+  physiotherapist   PhysiotherapistProfile @relation(fields: [physiotherapistId], references: [id])
+
+  @@index([physiotherapistId], map: "idx_review_physiotherapist")
+  @@index([rating], map: "idx_review_rating")
+  @@map("reviews")
+}
+
+model PatientMedicalHistory {
+  id            Int       @id @default(autoincrement())
+  patientId     Int       @map("patient_id")
+  conditionName String    @map("condition_name") @db.VarChar(255)
+  description   String?
+  diagnosisDate DateTime? @map("diagnosis_date") @db.Date
+  isCurrent     Boolean   @default(true) @map("is_current")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  patient       User      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId], map: "idx_medical_history_patient")
+  @@map("patient_medical_history")
+}
+
+model TreatmentSession {
+  id                         Int       @id @default(autoincrement())
+  bookingId                  Int       @map("booking_id")
+  sessionNotes               String?   @map("session_notes")
+  exercisesPrescribed        String?   @map("exercises_prescribed")
+  nextAppointmentRecommended DateTime? @map("next_appointment_recommended") @db.Date
+  progressNotes              String?   @map("progress_notes")
+  createdAt                  DateTime  @default(now()) @map("created_at")
+  booking                    Booking   @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId], map: "idx_treatment_booking")
+  @@map("treatment_sessions")
+}
+
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    Int              @map("user_id")
+  title     String           @db.VarChar(255)
+  message   String
+  type      NotificationType
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now()) @map("created_at")
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead], map: "idx_user_unread")
+  @@index([createdAt], map: "idx_created")
+  @@map("notifications")
+}
+
+enum Gender {
+  Male
+  Female
+  Other
+  PreferNotToSay
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+  refunded
+
+  @@map("payment_status")
+}
+
+enum NotificationType {
+  booking
+  payment
+  reminder
+  system
+
+  @@map("notification_type")
+}
