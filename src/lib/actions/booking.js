@@ -1,6 +1,7 @@
 'use server'
 
 import { PrismaClient } from '@prisma/client'
+import { sendBookingNotifications, sendBookingCancellationNotification, sendBookingConfirmationNotification, sendBookingRescheduleNotification } from '../services/email.js'
 
 const prisma = new PrismaClient()
 
@@ -222,6 +223,32 @@ const timeWithoutAmPm = appointmentTime.replace(/(AM|PM)/, '').trim();
         }
       }
     })
+
+    // Prepare booking data for email notifications
+    const bookingDataForEmail = {
+      bookingReference: booking.bookingReference,
+      appointmentDate: booking.appointmentDate,
+      appointmentTime: booking.appointmentTime,
+      durationMinutes: booking.durationMinutes,
+      totalAmount: booking.totalAmount ? parseFloat(booking.totalAmount.toString()) : null,
+      patient: booking.patient,
+      physiotherapist: {
+        name: `Dr. ${booking.physiotherapist.user.firstName} ${booking.physiotherapist.user.lastName}`,
+        email: booking.physiotherapist.user.email
+      },
+      clinic: booking.clinic,
+      treatmentType: booking.treatmentType?.name,
+      patientNotes: booking.patientNotes
+    };
+
+    // Send email notifications (non-blocking)
+    try {
+      const emailResults = await sendBookingNotifications(bookingDataForEmail);
+      console.log('Email notification results:', emailResults);
+    } catch (emailError) {
+      console.error('Error sending email notifications:', emailError);
+      // Don't fail the booking creation if emails fail
+    }
 
     return { 
       success: true, 
@@ -488,7 +515,36 @@ export async function cancelBooking(bookingId, userId) {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
       include: {
-        patient: true,
+        patient: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true
+          }
+        },
+        physiotherapist: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            }
+          }
+        },
+        clinic: {
+          select: {
+            name: true,
+            addressLine1: true,
+            city: {
+              select: {
+                name: true
+              }
+            }
+          }
+        },
         status: true,
         payments: true
       }
@@ -553,6 +609,32 @@ export async function cancelBooking(bookingId, userId) {
       }
     });
 
+    // Prepare booking data for email notifications
+    const bookingDataForEmail = {
+      bookingReference: booking.bookingReference,
+      appointmentDate: booking.appointmentDate,
+      appointmentTime: booking.appointmentTime,
+      durationMinutes: booking.durationMinutes,
+      totalAmount: booking.totalAmount ? parseFloat(booking.totalAmount.toString()) : null,
+      patient: booking.patient,
+      physiotherapist: {
+        name: `Dr. ${booking.physiotherapist.user.firstName} ${booking.physiotherapist.user.lastName}`,
+        email: booking.physiotherapist.user.email
+      },
+      clinic: booking.clinic,
+      treatmentType: booking.treatmentType?.name,
+      patientNotes: booking.patientNotes
+    };
+
+    // Send cancellation email notifications (non-blocking)
+    try {
+      const emailResults = await sendBookingCancellationNotification(bookingDataForEmail, 'Patient');
+      console.log('Cancellation email notification results:', emailResults);
+    } catch (emailError) {
+      console.error('Error sending cancellation email notifications:', emailError);
+      // Don't fail the cancellation if emails fail
+    }
+
     return { 
       success: true, 
       message: 'Booking cancelled successfully',
@@ -616,7 +698,44 @@ export async function therapistAcceptBooking(bookingId, therapistUserId) {
 
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { status: true, patient: true }
+      include: { 
+        status: true, 
+        patient: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true
+          }
+        },
+        physiotherapist: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            }
+          }
+        },
+        clinic: {
+          select: {
+            name: true,
+            addressLine1: true,
+            city: {
+              select: {
+                name: true
+              }
+            }
+          }
+        },
+        treatmentType: {
+          select: {
+            name: true
+          }
+        }
+      }
     });
     if (!booking) return { success: false, error: 'Booking not found' };
     if (booking.physiotherapistId !== physioId) return { success: false, error: 'Unauthorized' };
@@ -638,6 +757,32 @@ export async function therapistAcceptBooking(bookingId, therapistUserId) {
       'booking'
     );
 
+    // Prepare booking data for email notifications
+    const bookingDataForEmail = {
+      bookingReference: booking.bookingReference,
+      appointmentDate: booking.appointmentDate,
+      appointmentTime: booking.appointmentTime,
+      durationMinutes: booking.durationMinutes,
+      totalAmount: booking.totalAmount ? parseFloat(booking.totalAmount.toString()) : null,
+      patient: booking.patient,
+      physiotherapist: {
+        name: `Dr. ${booking.physiotherapist.user.firstName} ${booking.physiotherapist.user.lastName}`,
+        email: booking.physiotherapist.user.email
+      },
+      clinic: booking.clinic,
+      treatmentType: booking.treatmentType?.name,
+      patientNotes: booking.patientNotes
+    };
+
+    // Send confirmation email notifications (non-blocking)
+    try {
+      const emailResults = await sendBookingConfirmationNotification(bookingDataForEmail);
+      console.log('Confirmation email notification results:', emailResults);
+    } catch (emailError) {
+      console.error('Error sending confirmation email notifications:', emailError);
+      // Don't fail the confirmation if emails fail
+    }
+
     return { success: true, data: { id: updated.id, status: updated.status.name } };
   } catch (error) {
     console.error('Error accepting booking:', error);
@@ -655,7 +800,44 @@ export async function therapistRejectBooking(bookingId, therapistUserId, reason 
 
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { status: true, patient: true }
+      include: { 
+        status: true, 
+        patient: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true
+          }
+        },
+        physiotherapist: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            }
+          }
+        },
+        clinic: {
+          select: {
+            name: true,
+            addressLine1: true,
+            city: {
+              select: {
+                name: true
+              }
+            }
+          }
+        },
+        treatmentType: {
+          select: {
+            name: true
+          }
+        }
+      }
     });
     if (!booking) return { success: false, error: 'Booking not found' };
     if (booking.physiotherapistId !== physioId) return { success: false, error: 'Unauthorized' };
@@ -678,6 +860,32 @@ export async function therapistRejectBooking(bookingId, therapistUserId, reason 
       'booking'
     );
 
+    // Prepare booking data for email notifications
+    const bookingDataForEmail = {
+      bookingReference: booking.bookingReference,
+      appointmentDate: booking.appointmentDate,
+      appointmentTime: booking.appointmentTime,
+      durationMinutes: booking.durationMinutes,
+      totalAmount: booking.totalAmount ? parseFloat(booking.totalAmount.toString()) : null,
+      patient: booking.patient,
+      physiotherapist: {
+        name: `Dr. ${booking.physiotherapist.user.firstName} ${booking.physiotherapist.user.lastName}`,
+        email: booking.physiotherapist.user.email
+      },
+      clinic: booking.clinic,
+      treatmentType: booking.treatmentType?.name,
+      patientNotes: booking.patientNotes
+    };
+
+    // Send cancellation email notifications (non-blocking)
+    try {
+      const emailResults = await sendBookingCancellationNotification(bookingDataForEmail, 'Therapist');
+      console.log('Rejection email notification results:', emailResults);
+    } catch (emailError) {
+      console.error('Error sending rejection email notifications:', emailError);
+      // Don't fail the rejection if emails fail
+    }
+
     return { success: true, data: { id: updated.id, status: updated.status.name } };
   } catch (error) {
     console.error('Error rejecting booking:', error);
@@ -695,7 +903,44 @@ export async function therapistRescheduleBooking(bookingId, therapistUserId, new
 
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { status: true, patient: true }
+      include: { 
+        status: true, 
+        patient: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true
+          }
+        },
+        physiotherapist: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            }
+          }
+        },
+        clinic: {
+          select: {
+            name: true,
+            addressLine1: true,
+            city: {
+              select: {
+                name: true
+              }
+            }
+          }
+        },
+        treatmentType: {
+          select: {
+            name: true
+          }
+        }
+      }
     });
     if (!booking) return { success: false, error: 'Booking not found' };
     if (booking.physiotherapistId !== physioId) return { success: false, error: 'Unauthorized' };
@@ -730,6 +975,32 @@ export async function therapistRescheduleBooking(bookingId, therapistUserId, new
       `Your booking ${booking.bookingReference} was rescheduled to ${newAppointmentDate} at ${sanitizedTime}.`,
       'booking'
     );
+
+    // Prepare booking data for email notifications
+    const bookingDataForEmail = {
+      bookingReference: booking.bookingReference,
+      appointmentDate: booking.appointmentDate,
+      appointmentTime: booking.appointmentTime,
+      durationMinutes: booking.durationMinutes,
+      totalAmount: booking.totalAmount ? parseFloat(booking.totalAmount.toString()) : null,
+      patient: booking.patient,
+      physiotherapist: {
+        name: `Dr. ${booking.physiotherapist.user.firstName} ${booking.physiotherapist.user.lastName}`,
+        email: booking.physiotherapist.user.email
+      },
+      clinic: booking.clinic,
+      treatmentType: booking.treatmentType?.name,
+      patientNotes: booking.patientNotes
+    };
+
+    // Send reschedule email notifications (non-blocking)
+    try {
+      const emailResults = await sendBookingRescheduleNotification(bookingDataForEmail, newAppointmentDate, sanitizedTime);
+      console.log('Reschedule email notification results:', emailResults);
+    } catch (emailError) {
+      console.error('Error sending reschedule email notifications:', emailError);
+      // Don't fail the reschedule if emails fail
+    }
 
     return { success: true, data: { id: updated.id, appointmentDate: updated.appointmentDate, appointmentTime: updated.appointmentTime } };
   } catch (error) {

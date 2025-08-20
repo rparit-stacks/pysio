@@ -429,6 +429,7 @@ export async function registerPhysiotherapist(formData) {
           yearsExperience: rawData.yearsExperience,
           bio: rawData.bio,
           hourlyRate: rawData.hourlyRate,
+          kycDocumentUrl: null,
           isVerified: false, // Requires admin verification
           isAvailable: false, // Not available until verified
         },

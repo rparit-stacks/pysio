@@ -28,12 +28,14 @@ export default function ProfilePage() {
 					phone: res.data.phone || "",
 					dateOfBirth: res.data.dateOfBirth ? new Date(res.data.dateOfBirth).toISOString().slice(0,10) : "",
 					gender: res.data.gender || "",
+					kycDocumentUrl: res.data.kycDocumentUrl || "",
 					coruRegistration: res.data.physiotherapistProfile?.coruRegistration || "",
 					qualification: res.data.physiotherapistProfile?.qualification || "",
 					yearsExperience: res.data.physiotherapistProfile?.yearsExperience ?? "",
 					bio: res.data.physiotherapistProfile?.bio || "",
 					hourlyRate: res.data.physiotherapistProfile?.hourlyRate ?? "",
 					profileImageUrl: res.data.physiotherapistProfile?.profileImageUrl || "",
+					therapistKycDocumentUrl: res.data.physiotherapistProfile?.kycDocumentUrl || "",
 				});
 			}
 			setLoading(false);
@@ -55,6 +57,7 @@ export default function ProfilePage() {
 				phone: form.phone,
 				dateOfBirth: form.dateOfBirth,
 				gender: form.gender || null,
+				kycDocumentUrl: form.kycDocumentUrl || null,
 			};
 			const uRes = await updateUserProfile(user.id, base);
 			if (!uRes.success) throw new Error(uRes.error || 'Failed to update user');
@@ -69,6 +72,7 @@ export default function ProfilePage() {
 					bio: form.bio,
 					hourlyRate: form.hourlyRate !== "" ? Number(form.hourlyRate) : undefined,
 					profileImageUrl: form.profileImageUrl,
+					kycDocumentUrl: form.therapistKycDocumentUrl || null,
 				});
 				if (!tRes.success) throw new Error(tRes.error || 'Failed to update therapist');
 			}
@@ -114,6 +118,11 @@ export default function ProfilePage() {
 								<option value="PreferNotToSay">Prefer not to say</option>
 							</select>
 						</div>
+						<div className="md:col-span-2">
+							<label className="block text-sm text-gray-700 mb-1">KYC Document URL (User)</label>
+							<input name="kycDocumentUrl" value={form.kycDocumentUrl||""} onChange={onChange} className="w-full text-black border rounded px-3 py-2" placeholder="https://..." />
+							<p className="text-xs text-gray-500 mt-1">Upload your ID/utility bill to storage and paste the public link.</p>
+						</div>
 					</div>
 
 					{isTherapist && (
@@ -144,6 +153,11 @@ export default function ProfilePage() {
 									<label className="block text-sm text-gray-700 mb-1">Profile Image URL</label>
 									<input name="profileImageUrl" value={form.profileImageUrl||""} onChange={onChange} className="w-full text-black border rounded px-3 py-2" />
 									<p className="text-xs text-gray-500 mt-1">Upload the image to your storage and paste the public URL here.</p>
+								</div>
+								<div className="md:col-span-2">
+									<label className="block text-sm text-gray-700 mb-1">KYC Document URL (Therapist)</label>
+									<input name="therapistKycDocumentUrl" value={form.therapistKycDocumentUrl||""} onChange={onChange} className="w-full text-black border rounded px-3 py-2" placeholder="https://..." />
+									<p className="text-xs text-gray-500 mt-1">Upload your CORU certificate or ID and paste the public link.</p>
 								</div>
 							</div>
 

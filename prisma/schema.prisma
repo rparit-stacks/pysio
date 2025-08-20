@@ -52,6 +52,7 @@ model User {
   gender                 Gender?
   roleId                 Int                     @map("role_id")
   ppsNumber              String?                 @map("pps_number") @db.VarChar(20)
+  kycDocumentUrl         String?                 @map("kyc_document_url") @db.VarChar(500)
   emailVerified          Boolean                 @default(false) @map("email_verified")
   phoneVerified          Boolean                 @default(false) @map("phone_verified")
   isActive               Boolean                 @default(true) @map("is_active")
@@ -110,6 +111,7 @@ model PhysiotherapistProfile {
   bio                   String?
   hourlyRate            Decimal?                        @map("hourly_rate") @db.Decimal(8, 2)
   profileImageUrl       String?                         @map("profile_image_url") @db.VarChar(500)
+  kycDocumentUrl        String?                         @map("kyc_document_url") @db.VarChar(500)
   isVerified            Boolean                         @default(false) @map("is_verified")
   isAvailable           Boolean                         @default(true) @map("is_available")
   createdAt             DateTime                        @default(now()) @map("created_at")

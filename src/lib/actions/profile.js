@@ -27,6 +27,7 @@ export async function getCurrentUserWithProfile(userId) {
 			phone: user.phone,
 			dateOfBirth: user.dateOfBirth ? user.dateOfBirth.toISOString() : null,
 			gender: user.gender,
+			kycDocumentUrl: user.kycDocumentUrl ?? null,
 			role: user.role ? { id: user.role.id, name: user.role.name, description: user.role.description ?? null } : null,
 			addresses: Array.isArray(user.addresses) ? user.addresses.map(a => ({
 				id: a.id,
@@ -47,6 +48,7 @@ export async function getCurrentUserWithProfile(userId) {
 				bio: user.physiotherapistProfile.bio,
 				hourlyRate: user.physiotherapistProfile.hourlyRate != null ? Number(user.physiotherapistProfile.hourlyRate) : null,
 				profileImageUrl: user.physiotherapistProfile.profileImageUrl,
+				kycDocumentUrl: user.physiotherapistProfile.kycDocumentUrl ?? null,
 				isVerified: user.physiotherapistProfile.isVerified,
 				isAvailable: user.physiotherapistProfile.isAvailable,
 				createdAt: user.physiotherapistProfile.createdAt ? user.physiotherapistProfile.createdAt.toISOString() : null,
@@ -65,7 +67,7 @@ export async function getCurrentUserWithProfile(userId) {
 
 export async function updateUserProfile(userId, data) {
 	try {
-		const { firstName, lastName, phone, dateOfBirth, gender } = data;
+		const { firstName, lastName, phone, dateOfBirth, gender, kycDocumentUrl } = data;
 		const updated = await prisma.user.update({
 			where: { id: Number(userId) },
 			data: {
@@ -74,6 +76,7 @@ export async function updateUserProfile(userId, data) {
 				phone: phone ?? undefined,
 				dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
 				gender: gender ?? undefined,
+				kycDocumentUrl: kycDocumentUrl ?? undefined,
 				updatedAt: new Date()
 			}
 		});
@@ -109,7 +112,8 @@ export async function updateTherapistProfile(userId, data) {
 			yearsExperience,
 			bio,
 			hourlyRate,
-			profileImageUrl
+			profileImageUrl,
+			kycDocumentUrl
 		} = data;
 
 		const updated = await prisma.physiotherapistProfile.update({
@@ -121,6 +125,7 @@ export async function updateTherapistProfile(userId, data) {
 				bio: bio ?? undefined,
 				hourlyRate: hourlyRate !== undefined ? Number(hourlyRate) : undefined,
 				profileImageUrl: profileImageUrl ?? undefined,
+				kycDocumentUrl: kycDocumentUrl ?? undefined,
 				updatedAt: new Date()
 			}
 		});
