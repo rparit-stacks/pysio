@@ -21,20 +21,27 @@ export default function FindTherapistPage() {
   const [isSearching, setIsSearching] = useState(false);
 
   const observerRef = useRef(null);
-  const specialization = 'Geriatric Physiotherapy';
+  const specialization = null; // Show all specializations
   const limit = 10;
   const [initialLoad, setInitialLoad] = useState(true);
 
   const fetchFallbackTherapists = useCallback(async (reset = false, skipCount = 0) => {
     setLoading(true);
     const result = await getAllAvailablePhysiotherapists(skipCount, limit);
-    const data = result.success ? result.data : [];
+    let data = result.success ? result.data : [];
+    
+    // If specialization is specified, filter by it
+    if (specialization) {
+      data = data.filter(therapist => 
+        therapist.specialization?.toLowerCase().includes(specialization.toLowerCase())
+      );
+    }
 
     setTherapists(prev => reset ? data : [...prev, ...data]);
     setHasMore(data.length === limit);
     setUseFallback(true);
     setLoading(false);
-  }, []);
+  }, [specialization]);
 
   useEffect(() => {
     const loadInitial = async () => {
@@ -53,15 +60,10 @@ export default function FindTherapistPage() {
 
             if (city) {
               setLocation(city);
-              const result = await getPhysiotherapistsByLocationAndSpecialization(city, specialization);
-              if (result.success && result.data.length > 0) {
-                setTherapists(result.data);
-                setHasMore(false);
-                setUseFallback(false);
-              } else {
-                setLocation('Random Locations');
-                await fetchFallbackTherapists(true, 0);
-              }
+              // Since specialization is null, just load all therapists for the city
+              // For now, let's use the fallback to show all therapists
+              setLocation('Random Locations');
+              await fetchFallbackTherapists(true, 0);
             } else {
               setLocation('Random Locations');
               await fetchFallbackTherapists(true, 0);
@@ -110,10 +112,23 @@ export default function FindTherapistPage() {
     fetchFallbackTherapists(false, skip);
   }, [skip, fetchFallbackTherapists, useFallback]);
 
-  const filtered = therapists.filter(t =>
-    [t.name, t.specialization, t.bio, t.location]
-      .some(field => field?.toLowerCase().includes(search.toLowerCase()))
-  ).slice(0, 50);
+  const filtered = therapists.filter(t => {
+    const searchTerm = search.toLowerCase();
+    const fieldsToSearch = [
+      t.name,
+      t.specialization, 
+      t.bio,
+      t.location,
+      // Add clinic cities for place name search
+      ...(t.clinics?.map(clinic => clinic.city) || []),
+      // Add clinic names
+      ...(t.clinics?.map(clinic => clinic.name) || [])
+    ];
+    
+    return fieldsToSearch.some(field => 
+      field?.toLowerCase().includes(searchTerm)
+    );
+  }).slice(0, 50);
 
   return (
     <section className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-green-50 py-6 sm:py-12 px-4 sm:px-6">
@@ -124,10 +139,23 @@ export default function FindTherapistPage() {
           <SearchBar
             value={search}
             onDebouncedChange={setSearch}
-            suggestions={therapists.filter((t) =>
-              [t.name, t.specialization, t.bio, t.location]
-                .some((field) => field?.toLowerCase().includes(search.toLowerCase()))
-            )}
+            suggestions={therapists.filter((t) => {
+              const searchTerm = search.toLowerCase();
+              const fieldsToSearch = [
+                t.name,
+                t.specialization, 
+                t.bio,
+                t.location,
+                // Add clinic cities for place name search
+                ...(t.clinics?.map(clinic => clinic.city) || []),
+                // Add clinic names
+                ...(t.clinics?.map(clinic => clinic.name) || [])
+              ];
+              
+              return fieldsToSearch.some(field => 
+                field?.toLowerCase().includes(searchTerm)
+              );
+            })}
             onSelectSuggestion={(t) => setSearch(t.name)}
           />
         </div>
@@ -189,10 +217,10 @@ export default function FindTherapistPage() {
               Book an appointment with our certified physiotherapists and get personalized treatment plans.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center px-2">
-              <button className="bg-emerald-600 from-[#7ce3b1] to-[#6dd4a2] hover:from-[#6dd4a2] hover:to-[#5eb893] text-white px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+              <button className="cursor-pointer bg-emerald-600 from-[#7ce3b1] to-[#6dd4a2] hover:from-[#6dd4a2] hover:to-[#5eb893] text-white px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
                 Book Appointment Now
               </button>
-              <button className="border-2 border-[#7ce3b1] hover:bg-[#7ce3b1]/10 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-lg transition-all duration-300 hover:scale-105 bg-emerald-600">
+              <button className="cursor-pointer border-2 border-[#7ce3b1] hover:bg-[#7ce3b1]/10 text-emerald-600 hover:text-emerald-700 px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-lg transition-all duration-300 hover:scale-105">
                 Find Therapists
               </button>
             </div>

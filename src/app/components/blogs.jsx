@@ -29,10 +29,13 @@ export default function BlogsSection() {
     },
   ];
 
-  const [featuredPost, ...sidePosts] = blogPosts;
-
   return (
-    <section className="relative bg-gradient-to-br from-emerald-50 via-white to-green-50 py-6 px-4 sm:py-16 overflow-hidden">
+    <section className="relative bg-gradient-to-br from-emerald-50 via-white to-green-50 py-8 sm:py-16 overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute inset-0">
+        <div className="absolute top-10 left-10 w-32 h-32 bg-gradient-to-br from-emerald-200/20 to-green-300/20 rounded-full blur-2xl animate-pulse"></div>
+        <div className="absolute bottom-10 right-10 w-40 h-40 bg-gradient-to-br from-green-200/20 to-emerald-300/20 rounded-full blur-2xl animate-pulse" style={{animationDelay: '1s'}}></div>
+      </div>
 
       {/* Background Image */}
       <div
@@ -43,99 +46,100 @@ export default function BlogsSection() {
       ></div>
 
       {/* Content */}
-      <div className="relative z-10 max-w-7xl mx-auto">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-bold text-green-500 mb-4">
-            Latest Blogs
-          </h2>
-          <div className="w-24 h-1 bg-[#7ce3b1] mx-auto rounded-full"></div>
+      <div className="relative z-10 max-w-7xl mx-auto px-4">
+        <div className="text-center mb-12 animate-fade-in-up">
+          <div className="inline-block">
+            <h2 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-emerald-600 via-green-500 to-emerald-500 bg-clip-text text-transparent mb-4 animate-slide-in-down">
+              Latest Blogs
+            </h2>
+            <div className="w-24 h-1 bg-gradient-to-r from-emerald-500 to-green-500 mx-auto rounded-full animate-pulse"></div>
+          </div>
+          <p className="text-lg text-gray-600 mt-4 animate-fade-in delay-300">
+            Stay updated with expert insights and tips from our physiotherapy professionals
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Featured Post - Large blog on the left */}
-          <div className="lg:col-span-2 lg:order-1">
-            <div className="bg-white rounded-2xl overflow-hidden border border-gray-200 hover:border-emerald-300 hover:shadow-xl transition-all duration-300 group cursor-pointer">
-              <div className="relative h-80 lg:h-96">
-                <Image
-                  src={featuredPost.image}
-                  alt={featuredPost.title}
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
-                <div className="absolute bottom-4 left-4 right-4">
-                  <span className="inline-block bg-[#7ce3b1] text-gray-900 px-3 py-1 rounded-full text-xs font-medium mb-3 shadow-md">
-                    Featured Article
-                  </span>
-                </div>
-              </div>
-              <div className="p-6">
-                <h3 className="text-gray-900 text-2xl font-bold mb-4 leading-tight">
-                  {featuredPost.title}
-                </h3>
-                <p className="text-gray-600 text-base mb-6 leading-relaxed">
-                  {featuredPost.excerpt}
-                </p>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <span className="text-emerald-600 font-medium">
-                      {featuredPost.author}
-                    </span>
-                    <span className="text-gray-500 text-sm">
-                      {featuredPost.date}
-                    </span>
-                  </div>
-                  <button className="text-emerald-600 hover:text-emerald-700 text-sm font-medium transition-colors duration-300 flex items-center gap-1">
-                    Read More →
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Side Posts - Small blogs on the right */}
-          <div className="space-y-4 lg:order-2">
-            {sidePosts.map((post, index) => (
+        {/* <CHANGE> Horizontal scrolling layout with uniform card sizes */}
+        <div className="relative animate-fade-in delay-500">
+          <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
+            {blogPosts.map((post, index) => (
               <div
                 key={index}
-                className="bg-white rounded-xl overflow-hidden border border-gray-200 hover:border-emerald-300 hover:shadow-lg transition-all duration-300 group cursor-pointer"
+                className="flex-none w-80 sm:w-96 bg-white rounded-3xl overflow-hidden border border-gray-200 hover:border-emerald-300 hover:shadow-2xl transition-all duration-500 group cursor-pointer snap-start transform hover:scale-105 hover:-translate-y-2"
+                style={{ animationDelay: `${index * 150}ms` }}
               >
-                <div className="flex sm:block lg:flex">
-                  <div className="relative flex-shrink-0 w-32 sm:w-full lg:w-32">
-                    <div className="aspect-video bg-gradient-to-br from-emerald-100 to-emerald-200 relative overflow-hidden">
-                      <Image
-                        src={post.image}
-                        alt={post.title}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    </div>
+                <div className="relative h-48 overflow-hidden">
+                  <Image
+                    src={post.image || "/placeholder.svg"}
+                    alt={post.title}
+                    fill
+                    className="object-cover group-hover:scale-110 transition-transform duration-700"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent group-hover:from-black/50 transition-all duration-500"></div>
+                  
+                  {/* Floating badge */}
+                  <div className="absolute top-4 left-4">
+                    <span className="inline-block bg-gradient-to-r from-emerald-500 to-green-500 text-white px-4 py-2 rounded-full text-xs font-semibold shadow-lg backdrop-blur-sm transform group-hover:scale-110 transition-all duration-300">
+                      {index === 0 ? 'Featured' : 'Latest'}
+                    </span>
                   </div>
-                  <div className="p-3 flex-1 min-w-0">
-                    <h4 className="text-gray-900 text-sm font-semibold mb-1 line-clamp-2 leading-tight">
-                      {post.title}
-                    </h4>
-                    <p className="text-gray-600 text-xs line-clamp-2 mb-2">
-                      {post.excerpt}
-                    </p>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-emerald-600 font-medium truncate mr-2">
+
+                  {/* Hover overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-emerald-500/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  <h3 className="text-gray-900 text-xl font-bold leading-tight line-clamp-2 group-hover:text-emerald-700 transition-colors duration-300">
+                    {post.title}
+                  </h3>
+                  
+                  <p className="text-gray-600 text-sm leading-relaxed line-clamp-3 group-hover:text-gray-700 transition-colors duration-300">
+                    {post.excerpt}
+                  </p>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                    <div className="space-y-1">
+                      <div className="text-emerald-600 font-semibold text-sm group-hover:text-emerald-700 transition-colors duration-300">
                         {post.author}
-                      </span>
-                      <span className="text-gray-500 flex-shrink-0">
+                      </div>
+                      <div className="text-gray-500 text-xs">
                         {post.date}
-                      </span>
+                      </div>
                     </div>
+                    
+                    <button className="relative bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 transform hover:scale-110 active:scale-95 shadow-lg hover:shadow-xl overflow-hidden group/btn">
+                      <span className="relative z-10">Read More</span>
+                      <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover/btn:opacity-100 transition-all duration-300"></div>
+                    </button>
                   </div>
                 </div>
+
+                {/* Card glow effect */}
+                <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-emerald-500/10 to-green-500/10 opacity-0 group-hover:opacity-100 transition-all duration-500 -z-10 blur-xl"></div>
               </div>
+            ))}
+          </div>
+
+          {/* Scroll indicators */}
+          <div className="flex justify-center mt-6 space-x-2">
+            {blogPosts.map((_, index) => (
+              <div
+                key={index}
+                className="w-2 h-2 rounded-full bg-emerald-300 hover:bg-emerald-500 transition-all duration-300 cursor-pointer"
+                style={{ animationDelay: `${index * 100 + 800}ms` }}
+              ></div>
             ))}
           </div>
         </div>
 
-        <div className="text-center mt-12">
-          <button className="bg-emerald-600 hover:bg-emerald-600 text-white px-8 py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transition-all duration-300">
-           <a href="/blog"> View All Articles</a>
+        {/* <CHANGE> Enhanced CTA button with better animations */}
+        <div className="text-center mt-12 animate-fade-in delay-1000">
+          <button className="relative bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white px-10 py-4 rounded-2xl font-semibold shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:scale-110 active:scale-95 hover:rotate-1 overflow-hidden group">
+            <span className="relative z-10">
+              <a href="/blog">View All Articles</a>
+            </span>
+            <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 transform -skew-x-12"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-green-400/20 opacity-0 group-hover:opacity-100 transition-all duration-500 blur-xl"></div>
           </button>
         </div>
       </div>

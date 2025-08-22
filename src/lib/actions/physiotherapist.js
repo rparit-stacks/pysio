@@ -80,7 +80,11 @@ export async function getTherapistsBySpecializationName(specializationName) {
           physio.qualification || 'BSc Physiotherapy',
           `CORU: ${physio.coruRegistration || 'Registered'}`
         ],
-        availableSlots: ['09:00 AM', '11:00 AM', '02:00 PM', '04:00 PM'],
+        availableSlots: [
+          '09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
+          '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', 
+          '05:00 PM', '06:00 PM', '07:00 PM', '08:00 PM', '09:00 PM'
+        ],
         price: `€${Math.round(Number(physio.hourlyRate) || 75)}`,
         email: physio.user.email,
         phone: physio.user.phone,
@@ -181,7 +185,11 @@ export async function getAllAvailablePhysiotherapists(skip = 0, limit = 50) {
           physio.qualification || 'BSc Physiotherapy',
           `CORU: ${physio.coruRegistration || 'Registered'}`
         ],
-        availableSlots: ['09:00 AM', '11:00 AM', '02:00 PM', '04:00 PM'],
+        availableSlots: [
+          '09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
+          '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', 
+          '05:00 PM', '06:00 PM', '07:00 PM', '08:00 PM', '09:00 PM'
+        ],
         price: `€${Math.round(Number(physio.hourlyRate) || 75)}`,
         email: physio.user.email,
         phone: physio.user.phone,
@@ -275,7 +283,11 @@ export async function getTwentyRandomTherapists() {
           physio.qualification || 'BSc Physiotherapy',
           `CORU: ${physio.coruRegistration || 'Registered'}`
         ],
-        availableSlots: ['09:00 AM', '11:00 AM', '02:00 PM', '04:00 PM'],
+        availableSlots: [
+          '09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
+          '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', 
+          '05:00 PM', '06:00 PM', '07:00 PM', '08:00 PM', '09:00 PM'
+        ],
         price: `€${Math.round(Number(physio.hourlyRate) || 75)}`,
         email: physio.user.email,
         phone: physio.user.phone,
@@ -403,7 +415,11 @@ export async function getPhysiotherapistsByLocationAndSpecialization(location, s
           physio.qualification || "BSc Physiotherapy",
           `CORU: ${physio.coruRegistration || 'Registered'}`
         ],
-        availableSlots: ["09:00 AM", "11:00 AM", "02:00 PM", "04:00 PM"], // Default slots
+        availableSlots: [
+          '09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
+          '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', 
+          '05:00 PM', '06:00 PM', '07:00 PM', '08:00 PM', '09:00 PM'
+        ], // Full day slots 9 AM - 9 PM
         price: `€${Math.round(Number(physio.hourlyRate) || 75)}`,
         email: physio.user.email,
         phone: physio.user.phone,
