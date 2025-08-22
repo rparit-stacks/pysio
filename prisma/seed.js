@@ -263,6 +263,7 @@ async function seedPaymentMethods() {
       { name: "Insurance" },
       { name: "HSE" },
     ],
+    skipDuplicates: true, // prevents duplicates
   });
 }
 
