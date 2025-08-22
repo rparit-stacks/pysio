@@ -64,6 +64,9 @@ model User {
   physiotherapistProfile PhysiotherapistProfile?
   reviews                Review[]
   addresses              UserAddress[]
+  files                  UserFile[]
+  blogPosts              BlogPost[]
+  blogComments           BlogComment[]
   role                   UserRole                @relation(fields: [roleId], references: [id])
  
   @@index([email], map: "idx_email")
@@ -362,6 +365,117 @@ enum PaymentStatus {
   refunded
 
   @@map("payment_status")
+}
+
+model UserFile {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @map("user_id")
+  fileName       String   @map("file_name") @db.VarChar(255)
+  storedFileName String   @map("stored_file_name") @db.VarChar(255)
+  fileType       String   @map("file_type") @db.VarChar(50)
+  mimeType       String   @map("mime_type") @db.VarChar(100)
+  fileSize       Int      @map("file_size")
+  filePath       String   @map("file_path") @db.VarChar(500)
+  description    String?
+  uploadedAt     DateTime @default(now()) @map("uploaded_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_user_files_user_id")
+  @@index([fileType], map: "idx_user_files_type")
+  @@index([uploadedAt], map: "idx_user_files_uploaded_at")
+  @@map("user_files")
+}
+
+model BlogCategory {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(100)
+  slug        String   @unique @db.VarChar(100)
+  description String?
+  color       String?  @db.VarChar(7) // Hex color code
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  posts       BlogPost[]
+
+  @@map("blog_categories")
+}
+
+model BlogPost {
+  id            Int           @id @default(autoincrement())
+  title         String        @db.VarChar(255)
+  slug          String        @unique @db.VarChar(255)
+  excerpt       String?       @db.Text
+  content       String        @db.Text
+  featuredImage String?       @map("featured_image") @db.VarChar(500)
+  authorId      Int           @map("author_id")
+  categoryId    Int           @map("category_id")
+  status        BlogStatus    @default(draft)
+  isFeatured    Boolean       @default(false) @map("is_featured")
+  viewCount     Int           @default(0) @map("view_count")
+  likeCount     Int           @default(0) @map("like_count")
+  readTime      Int?          @map("read_time") // in minutes
+  metaTitle     String?       @map("meta_title") @db.VarChar(255)
+  metaDescription String?     @map("meta_description") @db.VarChar(500)
+  publishedAt   DateTime?     @map("published_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @default(now()) @updatedAt @map("updated_at")
+  author        User          @relation(fields: [authorId], references: [id])
+  category      BlogCategory  @relation(fields: [categoryId], references: [id])
+  tags          BlogPostTag[]
+  comments      BlogComment[]
+
+  @@index([slug], map: "idx_blog_post_slug")
+  @@index([status, publishedAt], map: "idx_blog_post_published")
+  @@index([categoryId], map: "idx_blog_post_category")
+  @@index([authorId], map: "idx_blog_post_author")
+  @@map("blog_posts")
+}
+
+model BlogTag {
+  id        Int           @id @default(autoincrement())
+  name      String        @unique @db.VarChar(50)
+  slug      String        @unique @db.VarChar(50)
+  color     String?       @db.VarChar(7)
+  createdAt DateTime      @default(now()) @map("created_at")
+  posts     BlogPostTag[]
+
+  @@map("blog_tags")
+}
+
+model BlogPostTag {
+  postId Int      @map("post_id")
+  tagId  Int      @map("tag_id")
+  post   BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    BlogTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@map("blog_post_tags")
+}
+
+model BlogComment {
+  id        Int      @id @default(autoincrement())
+  postId    Int      @map("post_id")
+  authorId  Int?     @map("author_id")
+  name      String?  @db.VarChar(100) // For guest comments
+  email     String?  @db.VarChar(255) // For guest comments
+  content   String   @db.Text
+  isApproved Boolean @default(false) @map("is_approved")
+  createdAt DateTime @default(now()) @map("created_at")
+  post      BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User?    @relation(fields: [authorId], references: [id])
+
+  @@index([postId], map: "idx_blog_comment_post")
+  @@index([authorId], map: "idx_blog_comment_author")
+  @@map("blog_comments")
+}
+
+enum BlogStatus {
+  draft
+  published
+  archived
+
+  @@map("blog_status")
 }
 
 enum NotificationType {

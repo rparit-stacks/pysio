@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { getCurrentUserWithProfile, updateUserProfile, updateTherapistProfile } from "@/lib/actions/profile";
+import DashboardLayout from "../../components/DashboardLayout";
 
 export default function ProfilePage() {
 	const [user, setUser] = useState(null);
@@ -84,12 +85,24 @@ export default function ProfilePage() {
 		}
 	};
 
-	if (loading) return <div className="min-h-screen flex items-center justify-center text-gray-600">Loading...</div>;
+	if (loading) {
+		return (
+			<DashboardLayout>
+				<div className="flex items-center justify-center h-64">
+					<div className="text-center">
+						<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto"></div>
+						<p className="mt-4 text-gray-600">Loading profile...</p>
+					</div>
+				</div>
+			</DashboardLayout>
+		);
+	}
 
 	return (
-		<div className="min-h-screen bg-gray-50">
-			<div className="max-w-3xl mx-auto px-4 py-8">
-				<h1 className="text-2xl font-bold text-gray-900 mb-6">Edit Profile</h1>
+		<DashboardLayout>
+			<div className="p-6">
+				<div className="max-w-3xl mx-auto">
+					<h1 className="text-2xl font-bold text-gray-900 mb-6">Edit Profile</h1>
 				<form onSubmit={onSubmit} className="bg-white rounded-lg shadow p-6 space-y-6">
 					<div className="grid md:grid-cols-2 gap-4">
 						<div>
@@ -169,7 +182,8 @@ export default function ProfilePage() {
 						{message && <span className="ml-3 text-sm text-gray-700">{message}</span>}
 					</div>
 				</form>
+				</div>
 			</div>
-		</div>
+		</DashboardLayout>
 	);
 } 

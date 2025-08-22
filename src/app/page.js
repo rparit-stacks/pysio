@@ -1,4 +1,5 @@
 import Hero from "./components/hero";
+import HeroSlider from "./components/HeroSlider";
 import Features from "./components/feature";
 import Network from "./components/network";
 import Stats from "./components/stats";
@@ -13,6 +14,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-white">
       <main>
+        <HeroSlider />
         <Hero />
         <IrelandPhysiotherapistMap />
         <Features />

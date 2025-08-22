@@ -354,6 +354,10 @@ export async function registerPhysiotherapist(formData) {
       hourlyRate: formData.get("hourlyRate") ? parseFloat(formData.get("hourlyRate")) : undefined,
       specializations: formData.get("specializations") ? JSON.parse(formData.get("specializations")) : [],
       selectedClinic: formData.get("selectedClinic") ? parseInt(formData.get("selectedClinic")) : undefined,
+      
+      // File uploads
+      profileImageId: formData.get("profileImageId") ? parseInt(formData.get("profileImageId")) : undefined,
+      kycDocumentId: formData.get("kycDocumentId") ? parseInt(formData.get("kycDocumentId")) : undefined,
     };
 
     // Validate required fields
@@ -434,6 +438,21 @@ export async function registerPhysiotherapist(formData) {
           isAvailable: false, // Not available until verified
         },
       });
+
+      // Link uploaded files to user if they exist
+      if (rawData.profileImageId) {
+        await tx.userFile.update({
+          where: { id: rawData.profileImageId },
+          data: { userId: user.id }
+        });
+      }
+
+      if (rawData.kycDocumentId) {
+        await tx.userFile.update({
+          where: { id: rawData.kycDocumentId },
+          data: { userId: user.id }
+        });
+      }
 
       // Add specializations if provided
       if (rawData.specializations && rawData.specializations.length > 0) {

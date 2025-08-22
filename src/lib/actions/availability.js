@@ -92,3 +92,154 @@ function convertTo12Hour(time24) {
   const hours12 = hours % 12 || 12;
   return `${hours12.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')} ${period}`;
 }
+
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
+
+export async function getTherapistAvailability(userId) {
+  try {
+    const profile = await prisma.physiotherapistProfile.findUnique({
+      where: { userId: Number(userId) },
+      include: {
+        availabilityTemplates: true,
+        specificAvailabilities: {
+          orderBy: { date: 'asc' }
+        }
+      }
+    });
+
+    if (!profile) {
+      return { success: false, error: 'Physiotherapist profile not found' };
+    }
+
+    // Convert availability templates to weekly format
+    const weeklyTemplate = {};
+    profile.availabilityTemplates.forEach(template => {
+      weeklyTemplate[template.dayOfWeek.toLowerCase()] = {
+        isAvailable: template.isAvailable,
+        startTime: template.startTime,
+        endTime: template.endTime
+      };
+    });
+
+    // Format specific availability
+    const specificAvailability = profile.specificAvailabilities.map(sa => ({
+      id: sa.id,
+      date: sa.date.toISOString().split('T')[0],
+      startTime: sa.startTime,
+      endTime: sa.endTime,
+      isAvailable: sa.isAvailable
+    }));
+
+    return { 
+      success: true, 
+      data: { 
+        weeklyTemplate,
+        specificAvailability
+      } 
+    };
+  } catch (error) {
+    console.error('Error fetching therapist availability:', error);
+    return { success: false, error: 'Failed to fetch availability' };
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+export async function updateAvailabilityTemplate(userId, weeklyTemplate) {
+  try {
+    const profile = await prisma.physiotherapistProfile.findUnique({
+      where: { userId: Number(userId) },
+      select: { id: true }
+    });
+
+    if (!profile) {
+      return { success: false, error: 'Physiotherapist profile not found' };
+    }
+
+    // Delete existing templates
+    await prisma.availabilityTemplate.deleteMany({
+      where: { physiotherapistId: profile.id }
+    });
+
+    // Create new templates
+    const templates = Object.entries(weeklyTemplate).map(([day, config]) => ({
+      physiotherapistId: profile.id,
+      dayOfWeek: day.charAt(0).toUpperCase() + day.slice(1),
+      isAvailable: config.isAvailable || false,
+      startTime: config.startTime || '09:00',
+      endTime: config.endTime || '17:00'
+    }));
+
+    if (templates.length > 0) {
+      await prisma.availabilityTemplate.createMany({
+        data: templates
+      });
+    }
+
+    return { success: true, message: 'Availability template updated successfully' };
+  } catch (error) {
+    console.error('Error updating availability template:', error);
+    return { success: false, error: 'Failed to update availability template' };
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+export async function addSpecificAvailability(userId, availabilityData) {
+  try {
+    const profile = await prisma.physiotherapistProfile.findUnique({
+      where: { userId: Number(userId) },
+      select: { id: true }
+    });
+
+    if (!profile) {
+      return { success: false, error: 'Physiotherapist profile not found' };
+    }
+
+    // Check if specific availability already exists for this date
+    const existing = await prisma.specificAvailability.findFirst({
+      where: {
+        physiotherapistId: profile.id,
+        date: new Date(availabilityData.date)
+      }
+    });
+
+    if (existing) {
+      return { success: false, error: 'Specific availability already exists for this date' };
+    }
+
+    await prisma.specificAvailability.create({
+      data: {
+        physiotherapistId: profile.id,
+        date: new Date(availabilityData.date),
+        startTime: availabilityData.startTime,
+        endTime: availabilityData.endTime,
+        isAvailable: availabilityData.isAvailable
+      }
+    });
+
+    return { success: true, message: 'Specific availability added successfully' };
+  } catch (error) {
+    console.error('Error adding specific availability:', error);
+    return { success: false, error: 'Failed to add specific availability' };
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+export async function removeSpecificAvailability(availabilityId) {
+  try {
+    await prisma.specificAvailability.delete({
+      where: { id: Number(availabilityId) }
+    });
+
+    return { success: true, message: 'Specific availability removed successfully' };
+  } catch (error) {
+    console.error('Error removing specific availability:', error);
+    return { success: false, error: 'Failed to remove specific availability' };
+  } finally {
+    await prisma.$disconnect();
+  }
+}

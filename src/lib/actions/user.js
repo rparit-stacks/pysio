@@ -1,133 +1,65 @@
-'use server';
+'use server'
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client'
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient()
 
-// Get all users for admin view
-export async function getAllUsersForAdmin() {
+export async function getUserProfile(userId) {
   try {
-    const users = await prisma.user.findMany({
-      include: {
-        role: {
-          select: {
-            name: true
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
+    const user = await prisma.user.findUnique({
+      where: { id: Number(userId) },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        dateOfBirth: true,
+        createdAt: true,
+        updatedAt: true
       }
     });
 
-    const transformedUsers = users.map(user => ({
-      id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      phone: user.phone,
-      role: user.role.name,
-      isActive: user.isActive,
-      emailVerified: user.emailVerified,
-      createdAt: user.createdAt
-    }));
+    if (!user) {
+      return { success: false, error: 'User not found' };
+    }
 
-    return {
-      success: true,
-      data: transformedUsers
-    };
+    return { success: true, data: user };
   } catch (error) {
-    console.error('Error fetching users for admin:', error);
-    return {
-      success: false,
-      error: 'Failed to fetch users'
-    };
+    console.error('Error fetching user profile:', error);
+    return { success: false, error: 'Failed to fetch user profile' };
   } finally {
     await prisma.$disconnect();
   }
 }
 
-// Get user count
-export async function getUserCount() {
+export async function updateUserProfile(userId, profileData) {
   try {
-    const count = await prisma.user.count();
-    return {
-      success: true,
-      data: count
-    };
-  } catch (error) {
-    console.error('Error getting user count:', error);
-    return {
-      success: false,
-      error: 'Failed to get user count'
-    };
-  } finally {
-    await prisma.$disconnect();
-  }
-}
-
-// Get therapist count
-export async function getTherapistCount() {
-  try {
-    const count = await prisma.physiotherapistProfile.count();
-    return {
-      success: true,
-      data: count
-    };
-  } catch (error) {
-    console.error('Error getting therapist count:', error);
-    return {
-      success: false,
-      error: 'Failed to get therapist count'
-    };
-  } finally {
-    await prisma.$disconnect();
-  }
-}
-
-// Get users by role
-export async function getUsersByRole(roleName) {
-  try {
-    const users = await prisma.user.findMany({
-      where: {
-        role: {
-          name: roleName
-        }
+    const updatedUser = await prisma.user.update({
+      where: { id: Number(userId) },
+      data: {
+        firstName: profileData.firstName,
+        lastName: profileData.lastName,
+        email: profileData.email,
+        phone: profileData.phone,
+        dateOfBirth: profileData.dateOfBirth ? new Date(profileData.dateOfBirth) : null,
+        updatedAt: new Date()
       },
-      include: {
-        role: {
-          select: {
-            name: true
-          }
-        }
-      },
-      orderBy: {
-        createdAt: 'desc'
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        dateOfBirth: true,
+        updatedAt: true
       }
     });
 
-    const transformedUsers = users.map(user => ({
-      id: user.id,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      phone: user.phone,
-      role: user.role.name,
-      isActive: user.isActive,
-      emailVerified: user.emailVerified,
-      createdAt: user.createdAt
-    }));
-
-    return {
-      success: true,
-      data: transformedUsers
-    };
+    return { success: true, data: updatedUser };
   } catch (error) {
-    console.error('Error fetching users by role:', error);
-    return {
-      success: false,
-      error: 'Failed to fetch users by role'
-    };
+    console.error('Error updating user profile:', error);
+    return { success: false, error: 'Failed to update user profile' };
   } finally {
     await prisma.$disconnect();
   }
