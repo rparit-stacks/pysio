@@ -15,7 +15,8 @@ import {
   BarChart3,
   Shield,
   Database,
-  FileText
+  FileText,
+  Image
 } from 'lucide-react';
 
 const AdminDashboardLayout = ({ children }) => {
@@ -28,6 +29,7 @@ const AdminDashboardLayout = ({ children }) => {
     { name: 'All Users', href: '/admin/users', icon: Users },
     { name: 'All Bookings', href: '/admin/bookings', icon: Calendar },
     { name: 'Payment Logs', href: '/admin/payments', icon: CreditCard },
+    { name: 'Slider Management', href: '/admin/slider', icon: Image },
     { name: 'Blog Management', href: '/admin/blog', icon: FileText },
     { name: 'System Settings', href: '/admin/settings', icon: Database },
     { name: 'Admin Profile', href: '/admin/profile', icon: Settings },
