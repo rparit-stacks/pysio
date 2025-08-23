@@ -181,11 +181,11 @@ const Header = ({ user = null }) => {
 
                      <div className="py-1">
                        <a 
-                         href="/dashboard" 
+                         href={user.role?.name === 'admin' ? '/admin' : '/dashboard'} 
                          className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 flex items-center space-x-3 transition-all duration-200 group"
                        >
                          <Calendar className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
-                         <span>Dashboard</span>
+                         <span>{user.role?.name === 'admin' ? 'Admin Dashboard' : 'Dashboard'}</span>
                        </a>
                      </div>
                      <div className="border-t border-gray-100 mt-1 pt-1">
