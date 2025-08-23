@@ -1,8 +1,7 @@
 "use client";
 import { Menu, X, LogOut, Calendar, Phone, Mail, Search, Briefcase, Info, Contact, User } from 'lucide-react';
 import { useState, useEffect, useRef } from "react";
-import { logout } from "../../lib/auth";
-import NotificationBell from './NotificationBell'; 
+import { logout } from "../../lib/auth"; 
 
 const Header = ({ user = null }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -153,9 +152,6 @@ const Header = ({ user = null }) => {
            <div className="hidden md:flex items-center space-x-3">
              {user ? (
                <>
-                 {/* Notification Bell */}
-                 <NotificationBell userId={user.id} />
-                 
                  <div className="relative">
                    <button
                      ref={userButtonRef}
