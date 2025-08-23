@@ -276,7 +276,112 @@ const emailTemplates = {
         </div>
       </div>
     `
-  })
+  }),
+
+  // Payment success email
+  paymentSuccess: (bookingData, recipient = 'patient') => {
+    const isPatient = recipient === 'patient';
+    const isTherapist = recipient === 'therapist';
+    const isAdmin = recipient === 'admin';
+
+    return {
+      subject: `Payment Successful - ${bookingData.bookingReference}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background-color: #10b981; color: white; padding: 20px; text-align: center;">
+            <h1>Payment Successful</h1>
+          </div>
+          
+          <div style="padding: 20px; background-color: #f9fafb;">
+            <h2>Hello ${isPatient ? bookingData.patient.firstName : isTherapist ? 'Dr. ' + bookingData.physiotherapist.name.split(' ')[1] : 'Admin'},</h2>
+            
+            <p>Payment has been successfully processed for the following booking:</p>
+            
+            <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3>Booking Details:</h3>
+              <ul style="list-style: none; padding: 0;">
+                <li><strong>Booking Reference:</strong> ${bookingData.bookingReference}</li>
+                <li><strong>Patient:</strong> ${bookingData.patient.firstName} ${bookingData.patient.lastName}</li>
+                <li><strong>Therapist:</strong> ${bookingData.physiotherapist.name}</li>
+                <li><strong>Date:</strong> ${new Date(bookingData.appointmentDate).toLocaleDateString()}</li>
+                <li><strong>Time:</strong> ${bookingData.appointmentTime}</li>
+                <li><strong>Clinic:</strong> ${bookingData.clinic.name}</li>
+                <li><strong>Amount Paid:</strong> €${bookingData.totalAmount}</li>
+              </ul>
+            </div>
+            
+            <div style="background-color: #d1fae5; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <h4>✅ Payment Status: Confirmed</h4>
+              <p>Your booking is now confirmed and ready for the appointment.</p>
+            </div>
+            
+            ${isPatient ? `
+              <p>Please arrive 10 minutes before your appointment time. If you need to reschedule, please contact us at least 24 hours in advance.</p>
+            ` : isTherapist ? `
+              <p>Please prepare for this appointment. The patient has completed payment and the booking is confirmed.</p>
+            ` : `
+              <p>Payment has been processed successfully. The booking is now confirmed.</p>
+            `}
+            
+            <p>Best regards,<br>The Abaile Team</p>
+          </div>
+        </div>
+      `
+    };
+  },
+
+  // Payment failed email
+  paymentFailed: (bookingData, recipient = 'patient') => {
+    const isPatient = recipient === 'patient';
+    const isTherapist = recipient === 'therapist';
+    const isAdmin = recipient === 'admin';
+
+    return {
+      subject: `Payment Failed - ${bookingData.bookingReference}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background-color: #ef4444; color: white; padding: 20px; text-align: center;">
+            <h1>Payment Failed</h1>
+          </div>
+          
+          <div style="padding: 20px; background-color: #f9fafb;">
+            <h2>Hello ${isPatient ? bookingData.patient.firstName : isTherapist ? 'Dr. ' + bookingData.physiotherapist.name.split(' ')[1] : 'Admin'},</h2>
+            
+            <p>Payment processing failed for the following booking:</p>
+            
+            <div style="background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3>Booking Details:</h3>
+              <ul style="list-style: none; padding: 0;">
+                <li><strong>Booking Reference:</strong> ${bookingData.bookingReference}</li>
+                <li><strong>Patient:</strong> ${bookingData.patient.firstName} ${bookingData.patient.lastName}</li>
+                <li><strong>Therapist:</strong> ${bookingData.physiotherapist.name}</li>
+                <li><strong>Date:</strong> ${new Date(bookingData.appointmentDate).toLocaleDateString()}</li>
+                <li><strong>Time:</strong> ${bookingData.appointmentTime}</li>
+                <li><strong>Clinic:</strong> ${bookingData.clinic.name}</li>
+                <li><strong>Amount:</strong> €${bookingData.totalAmount}</li>
+              </ul>
+            </div>
+            
+            <div style="background-color: #fee2e2; padding: 15px; border-radius: 8px; margin: 20px 0;">
+              <h4>❌ Payment Status: Failed</h4>
+              <p>The payment could not be processed. Please try again or contact support.</p>
+            </div>
+            
+            ${isPatient ? `
+              <p>To complete your booking, please try the payment again or contact our support team for assistance.</p>
+              <p>You can retry payment by visiting your booking dashboard.</p>
+            ` : isTherapist ? `
+              <p>The patient's payment has failed. The booking is currently on hold until payment is completed.</p>
+            ` : `
+              <p>Payment processing failed for this booking. Please monitor the situation and contact the patient if necessary.</p>
+            `}
+            
+            <p>Best regards,<br>The Abaile Team</p>
+          </div>
+        </div>
+      `
+    };
+  }
 };
 
 // Send email function
@@ -445,6 +550,74 @@ export async function sendBookingRescheduleNotification(bookingData, newDate, ne
     };
   } catch (error) {
     console.error('Error sending reschedule notification:', error);
+    return { error: error.message };
+  }
+}
+
+// Payment success notification
+export async function sendPaymentSuccessNotification(bookingData, recipient = 'patient') {
+  try {
+    const template = emailTemplates.paymentSuccess(bookingData, recipient);
+    
+    let emailResult = null;
+    
+    if (recipient === 'patient') {
+      emailResult = await sendEmail(
+        bookingData.patient.email,
+        template.subject,
+        template.html
+      );
+    } else if (recipient === 'therapist') {
+      emailResult = await sendEmail(
+        bookingData.physiotherapist.email,
+        template.subject,
+        template.html
+      );
+    } else if (recipient === 'admin' && process.env.ADMIN_EMAIL) {
+      emailResult = await sendEmail(
+        process.env.ADMIN_EMAIL,
+        template.subject,
+        template.html
+      );
+    }
+
+    return { success: true, recipient, result: emailResult };
+  } catch (error) {
+    console.error('Error sending payment success notification:', error);
+    return { error: error.message };
+  }
+}
+
+// Payment failed notification
+export async function sendPaymentFailedNotification(bookingData, recipient = 'patient') {
+  try {
+    const template = emailTemplates.paymentFailed(bookingData, recipient);
+    
+    let emailResult = null;
+    
+    if (recipient === 'patient') {
+      emailResult = await sendEmail(
+        bookingData.patient.email,
+        template.subject,
+        template.html
+      );
+    } else if (recipient === 'therapist') {
+      emailResult = await sendEmail(
+        bookingData.physiotherapist.email,
+        template.subject,
+        template.html
+      );
+    } else if (recipient === 'admin' && process.env.ADMIN_EMAIL) {
+      emailResult = await sendEmail(
+        process.env.ADMIN_EMAIL,
+        template.subject,
+        template.html
+      );
+    }
+
+    return { success: true, recipient, result: emailResult };
+  } catch (error) {
+    console.error('Error sending payment failed notification:', error);
     return { error: error.message };
   }
 }

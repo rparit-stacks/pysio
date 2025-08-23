@@ -36,6 +36,10 @@ export default async function RootLayout({ children }) {
         <link rel="icon" href="/logo.png" />
         <link rel="shortcut icon" href="/logo.png" />
         <link rel="apple-touch-icon" href="/logo.png" />
+        {/* Preload Stripe for faster payment gateway */}
+        <link rel="preload" href="https://js.stripe.com/v3/" as="script" />
+        <link rel="dns-prefetch" href="https://js.stripe.com" />
+        <link rel="dns-prefetch" href="https://checkout.stripe.com" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

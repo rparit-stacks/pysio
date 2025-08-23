@@ -46,15 +46,21 @@ export default function AvailabilityPage() {
 
         // Fetch availability data
         const availabilityRes = await getTherapistAvailability(u.id);
+        console.log('Availability response:', availabilityRes);
+        
         if (availabilityRes.success) {
           setWeeklyTemplate(availabilityRes.data.weeklyTemplate || {});
           setSpecificAvailability(availabilityRes.data.specificAvailability || []);
+        } else {
+          console.error('Failed to fetch availability:', availabilityRes.error);
+          setMessage(availabilityRes.error || 'Failed to fetch availability data');
         }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setLoading(false);
-      }
+              } catch (error) {
+          console.error("Error fetching data:", error);
+          setMessage("Error loading availability data: " + error.message);
+        } finally {
+          setLoading(false);
+        }
     };
 
     fetchData();
@@ -75,14 +81,18 @@ export default function AvailabilityPage() {
     setMessage(null);
     
     try {
+      console.log('Saving weekly template:', weeklyTemplate);
       const result = await updateAvailabilityTemplate(user.id, weeklyTemplate);
+      console.log('Save result:', result);
+      
       if (result.success) {
         setMessage("Weekly availability updated successfully");
       } else {
         setMessage(result.error || "Failed to update availability");
       }
     } catch (error) {
-      setMessage("Error updating availability");
+      console.error('Error saving template:', error);
+      setMessage("Error updating availability: " + error.message);
     } finally {
       setSaving(false);
     }
@@ -186,8 +196,18 @@ export default function AvailabilityPage() {
 
         {/* Message */}
         {message && (
-          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg mb-6">
-            {message}
+          <div className={`px-4 py-3 rounded-lg mb-6 flex justify-between items-center ${
+            message.includes('successfully') || message.includes('Success')
+              ? 'bg-green-50 border border-green-200 text-green-700'
+              : 'bg-red-50 border border-red-200 text-red-700'
+          }`}>
+            <span>{message}</span>
+            <button
+              onClick={() => setMessage(null)}
+              className="ml-4 text-gray-500 hover:text-gray-700"
+            >
+              ×
+            </button>
           </div>
         )}
 

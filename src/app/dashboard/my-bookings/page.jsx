@@ -28,6 +28,7 @@ export default function MyBookingsPage() {
                     const { getBookingsByPatient } = await import("@/lib/actions/booking");
                     const bookingsResult = await getBookingsByPatient(u.id);
                     if (bookingsResult.success) {
+                        console.log("Bookings data:", bookingsResult.data);
                         setBookings(bookingsResult.data || []);
                     } else {
                         console.log("No bookings found:", bookingsResult.error);
@@ -112,13 +113,13 @@ export default function MyBookingsPage() {
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {bookings.map((booking) => (
+                            {bookings.filter(booking => booking && booking.physiotherapist).map((booking) => (
                                 <div key={booking.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                                     <div className="flex justify-between items-start">
                                         <div className="flex-1">
                                             <div className="flex items-center gap-2 mb-2">
                                                 <User className="h-4 w-4 text-gray-400" />
-                                                <span className="font-semibold text-gray-900">Dr. {booking.therapist.name}</span>
+                                                <span className="font-semibold text-gray-900">{booking.physiotherapist}</span>
                                                 <span className={`px-2 py-1 text-xs rounded-full ${booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
                                                     booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                                                         'bg-gray-100 text-gray-800'
@@ -129,17 +130,31 @@ export default function MyBookingsPage() {
                                             <div className="flex items-center gap-4 text-sm text-gray-600">
                                                 <div className="flex items-center gap-1">
                                                     <Calendar className="h-4 w-4" />
-                                                    <span>{booking.date}</span>
+                                                    <span>{new Date(booking.appointmentDate).toLocaleDateString()}</span>
                                                 </div>
                                                 <div className="flex items-center gap-1">
                                                     <Clock className="h-4 w-4" />
-                                                    <span>{booking.time}</span>
+                                                    <span>{booking.appointmentTime}</span>
                                                 </div>
                                                 <div className="flex items-center gap-1">
                                                     <MapPin className="h-4 w-4" />
-                                                    <span>{booking.clinic}</span>
+                                                    <span>{booking.clinic?.name || 'Clinic not specified'}</span>
                                                 </div>
                                             </div>
+                                            {booking.totalAmount && (
+                                                <div className="mt-2 text-sm text-gray-600">
+                                                    <span className="font-medium">Amount: €{booking.totalAmount}</span>
+                                                    {booking.paymentStatus && (
+                                                        <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
+                                                            booking.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                                                            booking.paymentStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                                            'bg-red-100 text-red-800'
+                                                        }`}>
+                                                            {booking.paymentStatus}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -150,4 +165,5 @@ export default function MyBookingsPage() {
             </div>
         </DashboardLayout>
     );
+}
 }

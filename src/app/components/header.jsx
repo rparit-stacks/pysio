@@ -1,7 +1,8 @@
 "use client";
 import { Menu, X, LogOut, Calendar, Phone, Mail, Search, Briefcase, Info, Contact, User } from 'lucide-react';
 import { useState, useEffect, useRef } from "react";
-import { logout } from "../../lib/auth"; 
+import { logout } from "../../lib/auth";
+import NotificationBell from './NotificationBell'; 
 
 const Header = ({ user = null }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -151,20 +152,24 @@ const Header = ({ user = null }) => {
                      {/* Desktop Auth Section */}
            <div className="hidden md:flex items-center space-x-3">
              {user ? (
-               <div className="relative">
-                 <button
-                   ref={userButtonRef}
-                   onClick={toggleUserMenu}
-                   className="flex items-center space-x-2 text-gray-700 hover:text-emerald-600 px-3 py-2 rounded-lg hover:bg-gray-50 transition-all duration-200 group"
-                 >
-                   <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center group-hover:bg-emerald-700 transition-all duration-200">
-                     <span className="text-white font-medium text-sm">
-                       {user.firstName?.charAt(0)?.toUpperCase()}
-                       {user.lastName?.charAt(0)?.toUpperCase()}
-                     </span>
-                   </div>
-                   <span className="font-medium text-sm group-hover:text-emerald-600 transition-all duration-200">{`${user.firstName} ${user.lastName}`}</span>
-                 </button>
+               <>
+                 {/* Notification Bell */}
+                 <NotificationBell userId={user.id} />
+                 
+                 <div className="relative">
+                   <button
+                     ref={userButtonRef}
+                     onClick={toggleUserMenu}
+                     className="flex items-center space-x-2 text-gray-700 hover:text-emerald-600 px-3 py-2 rounded-lg hover:bg-gray-50 transition-all duration-200 group"
+                   >
+                     <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center group-hover:bg-emerald-700 transition-all duration-200">
+                       <span className="text-white font-medium text-sm">
+                         {user.firstName?.charAt(0)?.toUpperCase()}
+                         {user.lastName?.charAt(0)?.toUpperCase()}
+                       </span>
+                     </div>
+                     <span className="font-medium text-sm group-hover:text-emerald-600 transition-all duration-200">{`${user.firstName} ${user.lastName}`}</span>
+                   </button>
 
                                  {isUserMenuOpen && (
                    <div 
@@ -199,7 +204,8 @@ const Header = ({ user = null }) => {
                      </div>
                    </div>
                  )}
-              </div>
+                </div>
+               </>
             ) : (
               <>
                 <a
@@ -224,8 +230,8 @@ const Header = ({ user = null }) => {
              className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-all duration-200"
            >
              <div className="relative w-6 h-6">
-               <Menu className={`h-6 w-6 absolute transition-all duration-200 ${isMenuOpen ? 'opacity-0 rotate-90 scale-75' : 'opacity-100 rotate-0 scale-100'}`} />
-               <X className={`h-6 w-6 absolute transition-all duration-200 ${isMenuOpen ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-75'}`} />
+               <Menu className={`h-6 w-6 absolute transition-all duration-200 text-black ${isMenuOpen ? 'opacity-0 rotate-90 scale-75' : 'opacity-100 rotate-0 scale-100'}`} />
+               <X className={`h-6 w-6 absolute transition-all duration-200 text-black ${isMenuOpen ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-75'}`} />
              </div>
            </button>
         </div>

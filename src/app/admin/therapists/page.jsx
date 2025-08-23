@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import AdminDashboardLayout from '../../components/AdminDashboardLayout';
-import { Search, Eye, CheckCircle, XCircle, Star, MapPin, Phone, Mail, Trash2 } from 'lucide-react';
+import { Search, Eye, CheckCircle, XCircle, Star, MapPin, Phone, Mail, Trash2, Shield, ShieldCheck } from 'lucide-react';
 import Toast from '../../components/ui/Toast';
 import SkeletonLoader from '../../components/ui/SkeletonLoader';
 import { getAllTherapists, deleteMultipleTherapists } from '../../../lib/actions/admin';
+import { updatePhysiotherapistVerification, updatePhysiotherapistAvailability } from '../../../lib/actions/physiotherapist';
 
 const AdminTherapistsPage = () => {
   const [therapists, setTherapists] = useState([]);
@@ -54,8 +55,8 @@ const AdminTherapistsPage = () => {
     const matchesStatus = statusFilter === 'all' || 
                          (statusFilter === 'verified' && therapist.isVerified) ||
                          (statusFilter === 'unverified' && !therapist.isVerified) ||
-                         (statusFilter === 'active' && therapist.status === 'active') ||
-                         (statusFilter === 'inactive' && therapist.status === 'inactive');
+                         (statusFilter === 'available' && therapist.isAvailable) ||
+                         (statusFilter === 'unavailable' && !therapist.isAvailable);
     
     return matchesSearch && matchesStatus;
   });
@@ -124,6 +125,71 @@ const AdminTherapistsPage = () => {
     }
   };
 
+  const handleToggleVerification = async (therapistId, currentStatus) => {
+    try {
+      const result = await updatePhysiotherapistVerification(therapistId, !currentStatus);
+      if (result.success) {
+        setTherapists(prev => prev.map(therapist => 
+          therapist.id === therapistId 
+            ? { ...therapist, isVerified: !currentStatus }
+            : therapist
+        ));
+        setToast({
+          show: true,
+          message: `Therapist ${!currentStatus ? 'verified' : 'unverified'} successfully`,
+          type: 'success'
+        });
+      } else {
+        setToast({
+          show: true,
+          message: result.error || 'Failed to update verification status',
+          type: 'error'
+        });
+      }
+    } catch (error) {
+      console.error('Error updating verification:', error);
+      setToast({
+        show: true,
+        message: 'Failed to update verification status',
+        type: 'error'
+      });
+    }
+  };
+
+  const handleToggleAvailability = async (therapistId, currentStatus) => {
+    try {
+      console.log('Toggling availability for therapist:', therapistId, 'from', currentStatus, 'to', !currentStatus);
+      const result = await updatePhysiotherapistAvailability(therapistId, !currentStatus);
+      console.log('Availability update result:', result);
+      
+      if (result.success) {
+        setTherapists(prev => prev.map(therapist => 
+          therapist.id === therapistId 
+            ? { ...therapist, isAvailable: !currentStatus }
+            : therapist
+        ));
+        setToast({
+          show: true,
+          message: `Therapist ${!currentStatus ? 'activated' : 'deactivated'} successfully`,
+          type: 'success'
+        });
+      } else {
+        setToast({
+          show: true,
+          message: result.error || 'Failed to update availability status',
+          type: 'error'
+        });
+      }
+    } catch (error) {
+      console.error('Error updating availability:', error);
+      setToast({
+        show: true,
+        message: 'Failed to update availability status',
+        type: 'error'
+      });
+    }
+  };
+
   if (loading) {
     return (
       <AdminDashboardLayout>
@@ -142,21 +208,87 @@ const AdminTherapistsPage = () => {
   return (
     <AdminDashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">All Therapists</h1>
-          <div className="flex items-center space-x-4">
+                 <div className="flex justify-between items-center">
+           <div>
+             <h1 className="text-2xl font-bold text-gray-900">All Therapists</h1>
+             <div className="flex items-center space-x-4 mt-2 text-sm text-gray-600">
+               <span className="flex items-center">
+                 <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                 {therapists.filter(t => t.isVerified).length} Verified
+               </span>
+               <span className="flex items-center">
+                 <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
+                 {therapists.filter(t => !t.isVerified).length} Unverified
+               </span>
+               <span className="flex items-center">
+                 <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
+                 {therapists.filter(t => t.isAvailable).length} Available
+               </span>
+               <span className="flex items-center">
+                 <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                 {therapists.filter(t => !t.isAvailable).length} Unavailable
+               </span>
+             </div>
+           </div>
+           <div className="flex items-center space-x-4">
             {selectedTherapists.length > 0 && (
-              <button
-                onClick={handleDeleteSelected}
-                className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete Selected ({selectedTherapists.length})
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => {
+                    const unverifiedTherapists = selectedTherapists.filter(id => {
+                      const therapist = therapists.find(t => t.id === id);
+                      return therapist && !therapist.isVerified;
+                    });
+                    if (unverifiedTherapists.length > 0) {
+                      if (window.confirm(`Verify ${unverifiedTherapists.length} unverified therapists?`)) {
+                        unverifiedTherapists.forEach(id => {
+                          const therapist = therapists.find(t => t.id === id);
+                          if (therapist) {
+                            handleToggleVerification(id, therapist.isVerified);
+                          }
+                        });
+                      }
+                    } else {
+                      setToast({
+                        show: true,
+                        message: 'All selected therapists are already verified',
+                        type: 'info'
+                      });
+                    }
+                  }}
+                  className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <ShieldCheck className="h-4 w-4 mr-2" />
+                  Verify Selected ({selectedTherapists.length})
+                </button>
+                <button
+                  onClick={handleDeleteSelected}
+                  className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Selected ({selectedTherapists.length})
+                </button>
+              </div>
             )}
-            <div className="text-sm text-gray-600">
-              {filteredTherapists.length} of {therapists.length} therapists
-            </div>
+                         <div className="text-sm text-gray-600">
+               {filteredTherapists.length} of {therapists.length} therapists
+             </div>
+             {therapists.filter(t => !t.isVerified).length > 0 && (
+               <button
+                 onClick={() => {
+                   const unverifiedTherapists = therapists.filter(t => !t.isVerified);
+                   if (window.confirm(`Verify all ${unverifiedTherapists.length} unverified therapists?`)) {
+                     unverifiedTherapists.forEach(therapist => {
+                       handleToggleVerification(therapist.id, therapist.isVerified);
+                     });
+                   }
+                 }}
+                 className="flex items-center px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+               >
+                 <ShieldCheck className="h-3 w-3 mr-1" />
+                 Verify All ({therapists.filter(t => !t.isVerified).length})
+               </button>
+             )}
           </div>
         </div>
 
@@ -181,11 +313,11 @@ const AdminTherapistsPage = () => {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
               >
-                <option value="all">All Status</option>
-                <option value="verified">Verified</option>
-                <option value="unverified">Unverified</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                                 <option value="all">All Status</option>
+                 <option value="verified">Verified</option>
+                 <option value="unverified">Unverified</option>
+                 <option value="available">Available</option>
+                 <option value="unavailable">Unavailable</option>
               </select>
             </div>
           </div>
@@ -246,21 +378,30 @@ const AdminTherapistsPage = () => {
                           className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
                         />
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center">
-                            <span className="text-white font-medium">
-                              {therapist.name.split(' ').map(n => n[0]).join('')}
-                            </span>
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{therapist.name}</div>
-                            <div className="text-sm text-gray-500">
-                              {therapist.yearsExperience ? `${therapist.yearsExperience} years exp.` : 'Experience not specified'}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
+                                             <td className="px-6 py-4 whitespace-nowrap">
+                         <div className="flex items-center">
+                           <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                             therapist.isVerified ? 'bg-green-500' : 'bg-yellow-500'
+                           }`}>
+                             <span className="text-white font-medium">
+                               {therapist.name.split(' ').map(n => n[0]).join('')}
+                             </span>
+                           </div>
+                           <div className="ml-4">
+                             <div className="text-sm font-medium text-gray-900 flex items-center">
+                               {therapist.name}
+                               {therapist.isVerified && (
+                                 <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                   ✓ Verified
+                                 </span>
+                               )}
+                             </div>
+                             <div className="text-sm text-gray-500">
+                               {therapist.yearsExperience ? `${therapist.yearsExperience} years exp.` : 'Experience not specified'}
+                             </div>
+                           </div>
+                         </div>
+                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{therapist.email}</div>
                         <div className="text-sm text-gray-500">
@@ -292,30 +433,59 @@ const AdminTherapistsPage = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex flex-col space-y-1">
-                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                            therapist.isVerified 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-yellow-100 text-yellow-800'
-                          }`}>
-                            {therapist.isVerified ? 'Verified' : 'Unverified'}
-                          </span>
-                          <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                            therapist.status === 'active' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
-                          }`}>
-                            {therapist.status}
-                          </span>
+                        <div className="flex flex-col space-y-2">
+                                                     <div className="flex items-center space-x-2">
+                             <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                               therapist.isVerified 
+                                 ? 'bg-green-100 text-green-800' 
+                                 : 'bg-yellow-100 text-yellow-800'
+                             }`}>
+                               {therapist.isVerified ? '✓ Verified' : '⚠ Unverified'}
+                             </span>
+                             <button
+                               onClick={() => handleToggleVerification(therapist.id, therapist.isVerified)}
+                               className={`p-1.5 rounded-full transition-all duration-200 ${
+                                 therapist.isVerified 
+                                   ? 'text-green-600 hover:text-green-800 hover:bg-green-50 hover:scale-110' 
+                                   : 'text-yellow-600 hover:text-yellow-800 hover:bg-yellow-50 hover:scale-110'
+                               }`}
+                               title={therapist.isVerified ? 'Click to unverify' : 'Click to verify'}
+                             >
+                               {therapist.isVerified ? <ShieldCheck className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
+                             </button>
+                           </div>
+                                                     <div className="flex items-center space-x-2">
+                             <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                               therapist.isAvailable 
+                                 ? 'bg-green-100 text-green-800' 
+                                 : 'bg-red-100 text-red-800'
+                             }`}>
+                               {therapist.isAvailable ? '🟢 Available' : '🔴 Unavailable'}
+                             </span>
+                             <button
+                               onClick={() => handleToggleAvailability(therapist.id, therapist.isAvailable)}
+                               className={`p-1.5 rounded-full transition-all duration-200 ${
+                                 therapist.isAvailable 
+                                   ? 'text-green-600 hover:text-green-800 hover:bg-green-50 hover:scale-110' 
+                                   : 'text-red-600 hover:text-red-800 hover:bg-red-50 hover:scale-110'
+                               }`}
+                               title={therapist.isAvailable ? 'Click to deactivate' : 'Click to activate'}
+                             >
+                               {therapist.isAvailable ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                             </button>
+                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => setViewModal({ show: true, therapist })}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => setViewModal({ show: true, therapist })}
+                            className="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-50"
+                            title="View Details"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))

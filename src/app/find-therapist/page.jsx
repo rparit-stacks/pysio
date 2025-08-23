@@ -19,6 +19,8 @@ export default function FindTherapistPage() {
   const [hasMore, setHasMore] = useState(true);
   const [useFallback, setUseFallback] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   const observerRef = useRef(null);
   const specialization = null; // Show all specializations
@@ -103,8 +105,38 @@ export default function FindTherapistPage() {
     [loading, hasMore, useFallback, isSearching]
   );
 
+  // Search functionality
   useEffect(() => {
-    setIsSearching(search.trim().length > 0);
+    const performSearch = async () => {
+      if (!search.trim()) {
+        setSearchResults([]);
+        setIsSearching(false);
+        return;
+      }
+
+      setIsSearching(true);
+      setSearchLoading(true);
+
+      try {
+        const response = await fetch(`/api/therapists/search?q=${encodeURIComponent(search.trim())}&limit=50`);
+        const data = await response.json();
+
+        if (response.ok) {
+          setSearchResults(data.therapists || []);
+        } else {
+          console.error('Search failed:', data.error);
+          setSearchResults([]);
+        }
+      } catch (error) {
+        console.error('Search error:', error);
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    };
+
+    const timeoutId = setTimeout(performSearch, 300); // Debounce search
+    return () => clearTimeout(timeoutId);
   }, [search]);
 
   useEffect(() => {
@@ -112,23 +144,8 @@ export default function FindTherapistPage() {
     fetchFallbackTherapists(false, skip);
   }, [skip, fetchFallbackTherapists, useFallback]);
 
-  const filtered = therapists.filter(t => {
-    const searchTerm = search.toLowerCase();
-    const fieldsToSearch = [
-      t.name,
-      t.specialization, 
-      t.bio,
-      t.location,
-      // Add clinic cities for place name search
-      ...(t.clinics?.map(clinic => clinic.city) || []),
-      // Add clinic names
-      ...(t.clinics?.map(clinic => clinic.name) || [])
-    ];
-    
-    return fieldsToSearch.some(field => 
-      field?.toLowerCase().includes(searchTerm)
-    );
-  }).slice(0, 50);
+  // Use search results if searching, otherwise use regular therapists
+  const displayTherapists = isSearching ? searchResults : therapists;
 
   return (
     <section className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-green-50 py-6 sm:py-12 px-4 sm:px-6">
@@ -139,23 +156,7 @@ export default function FindTherapistPage() {
           <SearchBar
             value={search}
             onDebouncedChange={setSearch}
-            suggestions={therapists.filter((t) => {
-              const searchTerm = search.toLowerCase();
-              const fieldsToSearch = [
-                t.name,
-                t.specialization, 
-                t.bio,
-                t.location,
-                // Add clinic cities for place name search
-                ...(t.clinics?.map(clinic => clinic.city) || []),
-                // Add clinic names
-                ...(t.clinics?.map(clinic => clinic.name) || [])
-              ];
-              
-              return fieldsToSearch.some(field => 
-                field?.toLowerCase().includes(searchTerm)
-              );
-            })}
+            suggestions={searchResults}
             onSelectSuggestion={(t) => setSearch(t.name)}
           />
         </div>
@@ -193,19 +194,68 @@ export default function FindTherapistPage() {
         </div>
 
         {/* Therapist grid with better mobile spacing */}
-        <div className="mt-8 sm:mt-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 mb-12 sm:mb-16">
-          {initialLoad
-            ? Array.from({ length: 8 }).map((_, idx) => <SkeletonCard key={idx} />)
-            : filtered.map((t, index) =>
-                index === filtered.length - 1 ? (
-                  <div key={t.id} ref={lastElementRef}>
-                    <TherapistCard therapist={t} />
-                  </div>
-                ) : (
+        {/* Search Results or Loading */}
+        {searchLoading && (
+          <div className="mt-8 sm:mt-12 text-center">
+            <div className="animate-spin w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p className="text-gray-600">Searching therapists...</p>
+          </div>
+        )}
+
+        {/* Search Results */}
+        {isSearching && !searchLoading && (
+          <div className="mt-8 sm:mt-12">
+            <div className="mb-6">
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                Search Results for "{search}"
+              </h3>
+              <p className="text-gray-600">
+                Found {searchResults.length} therapist{searchResults.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+            
+            {searchResults.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 mb-12 sm:mb-16">
+                {searchResults.map((t) => (
                   <TherapistCard key={t.id} therapist={t} />
-                )
-              )}
-        </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No therapists found</h3>
+                <p className="text-gray-600 mb-4">Try searching with different keywords or browse all therapists below</p>
+                <button
+                  onClick={() => setSearch('')}
+                  className="text-emerald-600 hover:text-emerald-700 font-medium"
+                >
+                  Clear search
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Regular Therapist Grid */}
+        {!isSearching && (
+          <div className="mt-8 sm:mt-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 mb-12 sm:mb-16">
+            {initialLoad
+              ? Array.from({ length: 8 }).map((_, idx) => <SkeletonCard key={idx} />)
+              : displayTherapists.map((t, index) =>
+                  index === displayTherapists.length - 1 ? (
+                    <div key={t.id} ref={lastElementRef}>
+                      <TherapistCard therapist={t} />
+                    </div>
+                  ) : (
+                    <TherapistCard key={t.id} therapist={t} />
+                  )
+                )}
+          </div>
+        )}
 
         {/* CTA section with improved mobile layout */}
         <div className="mt-12 sm:mt-16 md:mt-20 text-center space-y-6 animate-fade-in delay-700 mb-8 sm:mb-12">

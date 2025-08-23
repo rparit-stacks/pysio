@@ -63,6 +63,8 @@ export async function createBooking({
   totalAmount
 }) {
   try {
+    console.log('Starting booking creation with:', { patientId, physiotherapistId, clinicId, appointmentDate, appointmentTime, totalAmount });
+
     // Initialize booking statuses first
     await initializeBookingStatuses()
 
@@ -74,69 +76,15 @@ export async function createBooking({
       }
     }
 
-    // Check if physiotherapist exists and is available
-    const physiotherapist = await prisma.physiotherapistProfile.findUnique({
-      where: { id: physiotherapistId },
-      select: { id: true, isAvailable: true, hourlyRate: true }
-    })
-
-    if (!physiotherapist) {
-      return { success: false, error: 'Physiotherapist not found' }
-    }
-
-    if (!physiotherapist.isAvailable) {
-      return { success: false, error: 'Physiotherapist is not available' }
-    }
-
-    // Check if patient exists
-    const patient = await prisma.user.findUnique({
-      where: { id: patientId },
-      select: { id: true, roleId: true }
-    })
-
-    if (!patient) {
-      return { success: false, error: 'Patient not found' }
-    }
-
-    // Check if clinic exists
-    const clinic = await prisma.clinic.findUnique({
-      where: { id: clinicId },
-      select: { id: true, isActive: true }
-    })
-
-    if (!clinic || !clinic.isActive) {
-      return { success: false, error: 'Clinic not found or inactive' }
-    }
-
-    // Check for existing booking at the same time slot
-    const existingBooking = await prisma.booking.findFirst({
-      where: {
-        physiotherapistId,
-        appointmentDate: new Date(appointmentDate),
-        appointmentTime,
-        status: {
-          name: {
-            not: 'cancelled'
-          }
-        }
-      }
-    })
-
-    if (existingBooking) {
-      return { success: false, error: 'Time slot already booked' }
-    }
-
     // Get default booking status (pending) - should exist after initialization
     const pendingStatus = await prisma.bookingStatus.findFirst({
       where: { name: 'pending' }
     })
 
     if (!pendingStatus) {
+      console.error('No pending status found');
       return { success: false, error: 'Booking status configuration error' }
     }
-
-    // Calculate total amount if not provided
-    const calculatedAmount = totalAmount || (physiotherapist.hourlyRate * (durationMinutes / 60))
 
     // Generate unique booking reference
     let bookingReference
@@ -145,7 +93,6 @@ export async function createBooking({
     
     while (!isUnique && attempts < 10) {
       bookingReference = generateBookingReference()
-      console.log(`Generated booking reference: "${bookingReference}" (length: ${bookingReference.length})`)
       const existing = await prisma.booking.findUnique({
         where: { bookingReference }
       })
@@ -158,20 +105,21 @@ export async function createBooking({
     if (!isUnique) {
       return { success: false, error: 'Failed to generate unique booking reference' }
     }
-const timeWithoutAmPm = appointmentTime.replace(/(AM|PM)/, '').trim();
+
+    const timeWithoutAmPm = appointmentTime.replace(/(AM|PM)/, '').trim();
 
     // Prepare booking data
     const bookingData = {
       bookingReference,
-      patientId,
-      physiotherapistId,
-      clinicId,
+      patientId: parseInt(patientId),
+      physiotherapistId: parseInt(physiotherapistId),
+      clinicId: parseInt(clinicId),
       appointmentDate: new Date(appointmentDate),
-      appointmentTime :timeWithoutAmPm,
+      appointmentTime: timeWithoutAmPm,
       durationMinutes,
       statusId: pendingStatus.id,
       treatmentTypeId,
-      totalAmount: calculatedAmount,
+      totalAmount: parseFloat(totalAmount) || 75.0,
       patientNotes
     }
 
@@ -241,14 +189,10 @@ const timeWithoutAmPm = appointmentTime.replace(/(AM|PM)/, '').trim();
       patientNotes: booking.patientNotes
     };
 
-    // Send email notifications (non-blocking)
-    try {
-      const emailResults = await sendBookingNotifications(bookingDataForEmail);
-      console.log('Email notification results:', emailResults);
-    } catch (emailError) {
-      console.error('Error sending email notifications:', emailError);
-      // Don't fail the booking creation if emails fail
-    }
+    // Send email notifications (completely non-blocking)
+    sendBookingNotifications(bookingDataForEmail)
+      .then(results => console.log('Email notification results:', results))
+      .catch(error => console.error('Error sending email notifications:', error));
 
     return { 
       success: true, 
@@ -370,7 +314,12 @@ export async function getBookingsByPatient(patientId) {
         therapistNotes: booking.therapistNotes,
         paymentStatus: paymentStatus,
         paymentAmount: paymentAmount,
-        payments: booking.payments || []
+        payments: (booking.payments || []).map(payment => ({
+          id: payment.id,
+          amount: payment.amount ? parseFloat(payment.amount.toString()) : null,
+          status: payment.status,
+          processedAt: payment.processedAt
+        }))
       };
     })
 
@@ -496,7 +445,12 @@ export async function getBookingsByPhysiotherapist(physiotherapistId) {
         therapistNotes: booking.therapistNotes,
         paymentStatus: paymentStatus,
         paymentAmount: paymentAmount,
-        payments: booking.payments || []
+        payments: (booking.payments || []).map(payment => ({
+          id: payment.id,
+          amount: payment.amount ? parseFloat(payment.amount.toString()) : null,
+          status: payment.status,
+          processedAt: payment.processedAt
+        }))
       };
     })
 

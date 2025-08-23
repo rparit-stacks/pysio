@@ -110,7 +110,7 @@ const AdminDashboardLayout = ({ children }) => {
           <div className="flex items-center justify-between">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="text-gray-500 hover:text-gray-600 p-2 rounded-md hover:bg-gray-100"
+              className="text-black hover:text-gray-600 p-2 rounded-md hover:bg-gray-100"
             >
               <Menu className="h-6 w-6" />
             </button>

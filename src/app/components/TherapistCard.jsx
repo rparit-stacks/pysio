@@ -21,6 +21,9 @@ export default function TherapistCard({ therapist }) {
   const [fetchingSlots, setFetchingSlots] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [calendarDays, setCalendarDays] = useState([]);
+  const [availableDates, setAvailableDates] = useState(new Set());
+  const [fetchingDates, setFetchingDates] = useState(false);
+  const [paymentStep, setPaymentStep] = useState(''); // 'creating', 'redirecting'
 
   const clinic = therapist.clinics?.[0];
 
@@ -63,9 +66,44 @@ export default function TherapistCard({ therapist }) {
       setLoading(true);
       setError(null);
 
+      // Pre-load payment gateway
+      const preloadPayment = async () => {
+        try {
+          // Create a hidden iframe to preload Stripe
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          iframe.src = 'https://js.stripe.com/v3/';
+          document.body.appendChild(iframe);
+          
+          // Remove after 2 seconds
+          setTimeout(() => {
+            if (document.body.contains(iframe)) {
+              document.body.removeChild(iframe);
+            }
+          }, 2000);
+        } catch (e) {
+          // Ignore preload errors
+        }
+      };
+
+      // Start preloading immediately
+      preloadPayment();
+
       startTransition(async () => {
         try {
-          const session = await createBookingAndPayment({
+          setPaymentStep('creating');
+          
+          console.log('Creating booking with data:', {
+            patientId: user.id,
+            physiotherapistId: therapist.id,
+            clinicId: therapist.clinics?.[0]?.id || 1,
+            appointmentDate: selectedDate,
+            appointmentTime: selectedSlot,
+            totalAmount: totalAmount
+          });
+
+          // Add timeout to the entire booking process
+          const bookingPromise = createBookingAndPayment({
             patientId: user.id,
             physiotherapistId: therapist.id,
             clinicId: therapist.clinics?.[0]?.id || 1,
@@ -77,14 +115,39 @@ export default function TherapistCard({ therapist }) {
             specialization: therapist.specialization,
           });
 
-          if (session?.checkoutUrl) {
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Booking timeout - please try again')), 15000)
+          );
+
+          const session = await Promise.race([bookingPromise, timeoutPromise]);
+
+          if (session?.success && session?.checkoutUrl) {
+            setPaymentStep('redirecting');
+            // Redirect immediately to payment gateway
             window.location.href = session.checkoutUrl;
           } else {
-            throw new Error("Failed to create payment session");
+            throw new Error(session?.error || "Failed to create payment session");
           }
         } catch (error) {
           console.error("Booking error:", error);
-          setError(error.message || "Failed to book appointment");
+          setPaymentStep('');
+          
+          // Show more specific error messages
+          if (error.message?.includes('Stripe')) {
+            setError("Payment gateway error. Please try again or contact support.");
+          } else if (error.message?.includes('Missing required')) {
+            setError("Missing booking information. Please check all fields.");
+          } else if (error.message?.includes('not found')) {
+            setError("Therapist or clinic not found. Please try again.");
+          } else if (error.message?.includes('already booked')) {
+            setError("This time slot is already booked. Please choose another time.");
+          } else if (error.message?.includes('timeout')) {
+            setError("Request timed out. Please try again.");
+          } else if (error.message?.includes('booking')) {
+            setError("Booking creation failed. Please try again.");
+          } else {
+            setError(error.message || "Failed to book appointment. Please try again.");
+          }
         } finally {
           setLoading(false);
         }
@@ -135,8 +198,57 @@ export default function TherapistCard({ therapist }) {
   React.useEffect(() => {
     if (showBookingModal) {
       setCalendarDays(generateCalendarDays(currentMonth));
+      fetchAvailableDates();
     }
   }, [showBookingModal, currentMonth, selectedDate]);
+
+  // Fetch available dates for the current month
+  const fetchAvailableDates = async () => {
+    setFetchingDates(true);
+    try {
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth() + 1; // getMonth() returns 0-11
+      
+      const response = await fetch(`/api/therapist/${therapist.id}/availability/month?year=${year}&month=${month}`);
+      const data = await response.json();
+      
+      if (response.ok && data.availableDates) {
+        setAvailableDates(new Set(data.availableDates));
+      } else {
+        console.error('Failed to fetch available dates:', data.error);
+        // Fallback: show all future dates as available
+        const fallbackDates = new Set();
+        const today = new Date();
+        const startDate = new Date(year, month - 1, 1);
+        const endDate = new Date(year, month, 0);
+        
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+          if (d >= today) {
+            fallbackDates.add(d.toISOString().split('T')[0]);
+          }
+        }
+        setAvailableDates(fallbackDates);
+      }
+    } catch (error) {
+      console.error('Error fetching available dates:', error);
+      // Fallback: show all future dates as available
+      const fallbackDates = new Set();
+      const today = new Date();
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth() + 1;
+      const startDate = new Date(year, month - 1, 1);
+      const endDate = new Date(year, month, 0);
+      
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        if (d >= today) {
+          fallbackDates.add(d.toISOString().split('T')[0]);
+        }
+      }
+      setAvailableDates(fallbackDates);
+    } finally {
+      setFetchingDates(false);
+    }
+  };
 
   const handleDateChange = async (date) => {
     setSelectedDate(date);
@@ -145,49 +257,62 @@ export default function TherapistCard({ therapist }) {
 
     setFetchingSlots(true);
 
-    // Get all slots from your API or function
-    let slots = await getFilteredAvailableSlots(therapist.id, therapist.availableSlots, date);
-    console.log('slots', slots);
-    console.log('date', date);
+    try {
+      // Use the new availability API
+      const response = await fetch(`/api/therapist/${therapist.id}/availability?date=${date.toISOString().split('T')[0]}`);
+      const data = await response.json();
 
-    const now = new Date();
-    const selected = new Date(date);
-    selected.setHours(0, 0, 0, 0);
+      if (response.ok && data.slots) {
+        // Convert slots to display format
+        const slots = data.slots.map(slot => slot.displayTime);
+        
+        // Apply 3-hour advance booking rule for today
+        const now = new Date();
+        const selected = new Date(date);
+        selected.setHours(0, 0, 0, 0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+        let filteredSlots = slots;
 
-    if (selected < today) {
+        if (selected < today) {
+          filteredSlots = [];
+        } else if (selected.getTime() === today.getTime()) {
+          const thresholdTime = new Date(now.getTime() + 3 * 60 * 60 * 1000); // now + 3 hours
 
-      slots = [];
-    } else if (selected.getTime() === today.getTime()) {
+          filteredSlots = slots.filter(slot => {
+            const [time, meridian] = slot.split(' ');
+            let [hours, minutes] = time.split(':').map(Number);
 
-      const thresholdTime = new Date(now.getTime() + 30 * 60 * 1000); // now + 30 min
+            if (meridian === 'PM' && hours !== 12) hours += 12;
+            if (meridian === 'AM' && hours === 12) hours = 0;
 
-      slots = slots.filter(slot => {
+            const slotDateTime = new Date(selected);
+            slotDateTime.setHours(hours, minutes, 0, 0);
 
-        const [time, meridian] = slot.split(' ');
-        let [hours, minutes] = time.split(':').map(Number);
+            return slotDateTime >= thresholdTime;
+          });
+        }
 
-        if (meridian === 'PM' && hours !== 12) hours += 12;
-        if (meridian === 'AM' && hours === 12) hours = 0;
-
-        const slotDateTime = new Date(selected);
-        slotDateTime.setHours(hours, minutes, 0, 0);
-
-        return slotDateTime >= thresholdTime;
-      });
+        setAvailableSlots(filteredSlots);
+      } else {
+        console.error('Failed to fetch availability:', data.error);
+        setAvailableSlots([]);
+      }
+    } catch (error) {
+      console.error('Error fetching availability:', error);
+      setAvailableSlots([]);
+    } finally {
+      setFetchingSlots(false);
     }
-    // else future date - keep all slots as is
-
-    setAvailableSlots(slots);
-    setFetchingSlots(false);
   };
 
   const navigateMonth = (direction) => {
     const newMonth = new Date(currentMonth);
     newMonth.setMonth(currentMonth.getMonth() + direction);
     setCurrentMonth(newMonth);
+    // Fetch available dates for the new month
+    setTimeout(() => fetchAvailableDates(), 100);
   };
 
 
@@ -198,15 +323,24 @@ export default function TherapistCard({ therapist }) {
 
         {/* Therapist Info Section */}
         <div className="flex items-start gap-4 mb-4">
-          <img
-            src={therapist.image || '/placeholder.png'}
-            alt={therapist.name || 'Therapist'}
-            className="w-16 h-16 rounded-full object-cover border-2 border-gray-100"
-          />
+          <div className="relative">
+            <img
+              src={therapist.image || '/placeholder.png'}
+              alt={therapist.name || 'Therapist'}
+              className="w-16 h-16 rounded-full object-cover border-2 border-gray-100"
+            />
+            {/* Availability Status Indicator */}
+            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+          </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-gray-900 truncate mb-1">
-              {therapist.name || 'Therapist Name'}
-            </h3>
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="text-lg font-semibold text-gray-900 truncate">
+                {therapist.name || 'Therapist Name'}
+              </h3>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                Available
+              </span>
+            </div>
             <p className="text-sm text-emerald-600 font-medium mb-2">
               {therapist.specialization || 'Specialization'}
             </p>
@@ -321,6 +455,14 @@ export default function TherapistCard({ therapist }) {
                 </label>
 
                 <div className="bg-gray-50 rounded-xl p-3 sm:p-4">
+                  {/* Loading indicator for dates */}
+                  {fetchingDates && (
+                    <div className="text-center py-2 mb-3">
+                      <div className="animate-spin w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full mx-auto"></div>
+                      <p className="text-xs text-gray-500 mt-1">Checking availability...</p>
+                    </div>
+                  )}
+                  
                   {/* Calendar Header */}
                   <div className="flex items-center justify-between mb-3 sm:mb-4">
                     <button
@@ -353,26 +495,35 @@ export default function TherapistCard({ therapist }) {
 
                   {/* Calendar Days */}
                   <div className="grid grid-cols-7 gap-1">
-                    {calendarDays.map((day, index) => (
-                      <button
-                        key={index}
-                        onClick={() => !day.isPast && day.isCurrentMonth && handleDateChange(day.date)}
-                        disabled={day.isPast || !day.isCurrentMonth}
-                        className={`
-                          h-8 w-8 sm:h-10 sm:w-10 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200
-                          ${day.isSelected
-                            ? 'bg-emerald-500 text-white shadow-md'
-                            : day.isToday
-                              ? 'bg-emerald-100 text-emerald-700 border-2 border-emerald-300'
-                              : day.isCurrentMonth && !day.isPast
-                                ? 'hover:bg-white hover:shadow-sm text-gray-700'
-                                : 'text-gray-300 cursor-not-allowed'
-                          }
-                        `}
-                      >
-                        {day.date.getDate()}
-                      </button>
-                    ))}
+                    {calendarDays.map((day, index) => {
+                      const dateStr = day.date.toISOString().split('T')[0];
+                      const isAvailable = availableDates.has(dateStr);
+                      const isClickable = !day.isPast && day.isCurrentMonth && isAvailable;
+                      
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => isClickable && handleDateChange(day.date)}
+                          disabled={!isClickable}
+                          className={`
+                            h-8 w-8 sm:h-10 sm:w-10 rounded-lg text-xs sm:text-sm font-medium transition-all duration-200
+                            ${day.isSelected
+                              ? 'bg-emerald-500 text-white shadow-md'
+                              : day.isToday
+                                ? 'bg-emerald-100 text-emerald-700 border-2 border-emerald-300'
+                                : day.isCurrentMonth && !day.isPast && isAvailable
+                                  ? 'hover:bg-white hover:shadow-sm text-gray-700 bg-green-50'
+                                  : day.isCurrentMonth && !day.isPast && !isAvailable
+                                    ? 'text-gray-400 cursor-not-allowed bg-gray-50'
+                                    : 'text-gray-300 cursor-not-allowed'
+                            }
+                          `}
+                          title={day.isCurrentMonth && !day.isPast && !isAvailable ? 'Not available on this date' : ''}
+                        >
+                          {day.date.getDate()}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -426,12 +577,17 @@ export default function TherapistCard({ therapist }) {
                       <div className="text-sm text-gray-500 mb-2">
                         {selectedDate && new Date(selectedDate).toDateString() === new Date().toDateString()
                           ? "No slots available today (need 3+ hours advance booking)"
-                          : "No available slots for this date"
+                          : "Therapist is not available on this date"
                         }
                       </div>
                       {selectedDate && new Date(selectedDate).toDateString() === new Date().toDateString() && (
                         <div className="text-xs text-emerald-600 font-medium">
                           Try selecting tomorrow or a future date
+                        </div>
+                      )}
+                      {selectedDate && new Date(selectedDate).toDateString() !== new Date().toDateString() && (
+                        <div className="text-xs text-emerald-600 font-medium">
+                          Check their weekly schedule or try a different date
                         </div>
                       )}
                     </div>
@@ -481,7 +637,18 @@ export default function TherapistCard({ therapist }) {
                     : 'hover:bg-emerald-600'
                     }`}
                 >
-                  {loading || isPending ? "Processing..." : "Confirm Booking"}
+                              {loading || isPending ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                <span>
+                  {paymentStep === 'creating' ? 'Creating Payment Session...' : 
+                   paymentStep === 'redirecting' ? 'Redirecting to Payment...' : 
+                   'Processing...'}
+                </span>
+              </div>
+            ) : (
+              "Confirm Booking"
+            )}
                 </button>
               </div>
             </div>

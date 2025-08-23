@@ -480,7 +480,8 @@ enum BlogStatus {
 
 enum NotificationType {
   booking
-  payment
+  payment_success
+  payment_failed
   reminder
   system
 
