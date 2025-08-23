@@ -5,7 +5,7 @@ import PatientDashboardLayout from '../../components/PatientDashboardLayout';
 import { Calendar, Clock, MapPin, Phone, Star, X } from 'lucide-react';
 import Toast from '../../components/ui/Toast';
 import SkeletonLoader from '../../components/ui/SkeletonLoader';
-import { getBookingsByPatient, cancelBooking } from '../../lib/actions/booking';
+import { getBookingsByPatient, cancelBooking } from '../../../lib/actions/booking';
 
 const PatientBookingsPage = () => {
   const [bookings, setBookings] = useState([]);

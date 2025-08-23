@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import PatientDashboardLayout from '../../components/PatientDashboardLayout';
 import { User, Mail, Phone, MapPin, Calendar, Edit2, Save, X } from 'lucide-react';
 import Toast from '../../components/ui/Toast';
-import { getUserProfile, updateUserProfile } from '../../lib/actions/user';
+import { getUserProfile, updateUserProfile } from '../../../lib/actions/user';
 
 const PatientProfilePage = () => {
   const [isEditing, setIsEditing] = useState(false);

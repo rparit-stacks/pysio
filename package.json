@@ -10,9 +10,7 @@
     "db:seed": "node prisma/seed.js",
     "postinstall": "prisma generate"
   },
-  "prisma": {
-    "seed": "node seed.js"
-  },
+
   "dependencies": {
     "@formspree/react": "^3.0.0",
     "@prisma/client": "^6.13.0",

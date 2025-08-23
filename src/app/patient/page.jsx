@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import PatientDashboardLayout from '../components/PatientDashboardLayout';
 import { Calendar, Clock, Star, TrendingUp, Heart, CreditCard, User, Plus } from 'lucide-react';
 import SkeletonLoader from '../components/ui/SkeletonLoader';
-import { getBookingsByPatient } from '../lib/actions/booking';
+import { getBookingsByPatient } from '../../lib/actions/booking';
 
 const PatientDashboardPage = () => {
   const [dashboardData, setDashboardData] = useState(null);

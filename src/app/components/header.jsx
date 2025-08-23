@@ -1,13 +1,34 @@
 "use client";
 import { Menu, X, LogOut, Calendar, Phone, Mail, Search, Briefcase, Info, Contact, User } from 'lucide-react';
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { logout } from "../../lib/auth"; 
 
 const Header = ({ user = null }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
+  const userButtonRef = useRef(null);
+
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   const toggleUserMenu = () => setIsUserMenuOpen(!isUserMenuOpen);
+
+  // Close user menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target) &&
+          userButtonRef.current && !userButtonRef.current.contains(event.target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+
+    if (isUserMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isUserMenuOpen]);
 
   const handleLogout = async () => {
     try {
@@ -31,174 +52,165 @@ const Header = ({ user = null }) => {
   );
 
   return (
-    <header className="bg-white shadow-lg border-b border-gray-100 sticky top-0 z-50 transition-all duration-500 backdrop-blur-sm">
+    <header className="bg-white/95 backdrop-blur-md border-b border-gray-200/50 sticky top-0 z-50 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="flex justify-between items-center py-3">
+        <div className="flex justify-between items-center py-4">
           {/* Logo */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center">
             <a href="/" className="cursor-pointer block group">
               <img
                 src="/logo.png"
                 alt="Abaile Logo"
-                className="h-14 sm:h-16 md:h-20 lg:h-24 w-auto max-w-[200px] sm:max-w-[240px] transition-all duration-500 group-hover:opacity-90 group-hover:scale-110 drop-shadow-sm"
+                className="h-12 sm:h-14 md:h-16 w-auto transition-all duration-300 group-hover:opacity-80 group-hover:scale-105"
               />
             </a>
           </div>
 
-          {/* <CHANGE> Enhanced mobile social icons with better rounded design and hover animations */}
-          <div className="flex items-center space-x-2 md:hidden">
+          {/* Mobile Contact Icons */}
+          <div className="flex items-center space-x-1 md:hidden">
             <a
               href="tel:18008647479"
-              className="relative p-3 text-gray-600 hover:text-white rounded-2xl transition-all duration-500 transform hover:scale-125 active:scale-95 group overflow-hidden"
+              className="p-2 text-gray-600 hover:text-blue-600 rounded-lg transition-all duration-200"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-500 transform scale-0 group-hover:scale-100"></div>
-              <Phone size={20} className="relative z-10 transition-all duration-300 group-hover:rotate-12" />
+              <Phone size={18} />
             </a>
             <a
               href="mailto:info@abhailephysiotherapy.com"
-              className="relative p-3 text-gray-600 hover:text-white rounded-2xl transition-all duration-500 transform hover:scale-125 active:scale-95 group overflow-hidden"
+              className="p-2 text-gray-600 hover:text-red-600 rounded-lg transition-all duration-200"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-500 transform scale-0 group-hover:scale-100"></div>
-              <Mail size={20} className="relative z-10 transition-all duration-300 group-hover:rotate-12" />
+              <Mail size={18} />
             </a>
             <a
               href="https://wa.me/911234567890"
               target="_blank"
               rel="noopener noreferrer"
-              className="relative p-3 text-gray-600 hover:text-white rounded-2xl transition-all duration-500 transform hover:scale-125 active:scale-95 group overflow-hidden"
+              className="p-2 text-gray-600 hover:text-green-600 rounded-lg transition-all duration-200"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-500 transform scale-0 group-hover:scale-100"></div>
-              <WhatsAppIcon size={20} className="relative z-10 transition-all duration-300 group-hover:rotate-12" />
+              <WhatsAppIcon size={18} />
             </a>
           </div>
 
-          {/* <CHANGE> Enhanced desktop navigation with more rounded design */}
-          <nav className="hidden md:flex items-center space-x-2 lg:space-x-3">
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
             <a
               href="/find-therapist"
-              className="text-gray-700 hover:text-white font-medium flex items-center space-x-2 px-4 py-3 rounded-2xl hover:bg-gradient-to-r hover:from-[#7ce3b1] hover:to-[#6dd4a2] transition-all duration-500 group transform hover:scale-105 hover:shadow-lg"
+              className="text-gray-700 hover:text-emerald-600 font-medium px-3 py-2 rounded-lg hover:bg-gray-50 transition-all duration-200"
             >
-              <Search size={18} className="group-hover:scale-125 group-hover:rotate-12 transition-all duration-300" />
-              <span>Find Therapists</span>
+              Find Therapists
             </a>
             <a
               href="/services"
-              className="text-gray-700 hover:text-white font-medium flex items-center space-x-2 px-4 py-3 rounded-2xl hover:bg-gradient-to-r hover:from-[#7ce3b1] hover:to-[#6dd4a2] transition-all duration-500 group transform hover:scale-105 hover:shadow-lg"
+              className="text-gray-700 hover:text-emerald-600 font-medium px-3 py-2 rounded-lg hover:bg-gray-50 transition-all duration-200"
             >
-              <Briefcase size={18} className="group-hover:scale-125 group-hover:rotate-12 transition-all duration-300" />
-              <span>Services</span>
+              Services
             </a>
             <a
               href="/about"
-              className="text-gray-700 hover:text-white font-medium flex items-center space-x-2 px-4 py-3 rounded-2xl hover:bg-gradient-to-r hover:from-[#7ce3b1] hover:to-[#6dd4a2] transition-all duration-500 group transform hover:scale-105 hover:shadow-lg"
+              className="text-gray-700 hover:text-emerald-600 font-medium px-3 py-2 rounded-lg hover:bg-gray-50 transition-all duration-200"
             >
-              <Info size={18} className="group-hover:scale-125 group-hover:rotate-12 transition-all duration-300" />
-              <span>About</span>
+              About
+            </a>
+            <a
+              href="/blog"
+              className="text-gray-700 hover:text-emerald-600 font-medium px-3 py-2 rounded-lg hover:bg-gray-50 transition-all duration-200"
+            >
+              Blog
             </a>
             <a
               href="/contact"
-              className="text-gray-700 hover:text-white font-medium flex items-center space-x-2 px-4 py-3 rounded-2xl hover:bg-gradient-to-r hover:from-[#7ce3b1] hover:to-[#6dd4a2] transition-all duration-500 group transform hover:scale-105 hover:shadow-lg"
+              className="text-gray-700 hover:text-emerald-600 font-medium px-3 py-2 rounded-lg hover:bg-gray-50 transition-all duration-200"
             >
-              <Contact size={18} className="group-hover:scale-125 group-hover:rotate-12 transition-all duration-300" />
-              <span>Contact</span>
+              Contact
             </a>
 
-            {/* <CHANGE> Enhanced social icons with better rounded design and individual hover colors */}
-            <div className="flex items-center space-x-2 ml-6 pl-6 border-l border-gray-200">
+            {/* Desktop Contact Icons */}
+            <div className="flex items-center space-x-1 ml-4 pl-4 border-l border-gray-200">
               <a
                 href="tel:18008647479"
-                className="relative p-3 text-gray-600 hover:text-white rounded-2xl transition-all duration-500 transform hover:scale-125 group overflow-hidden"
+                className="p-2 text-gray-600 hover:text-blue-600 rounded-lg transition-all duration-200"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-500 transform scale-0 group-hover:scale-100"></div>
-                <Phone size={18} className="relative z-10 transition-all duration-300 group-hover:rotate-12" />
+                <Phone size={16} />
               </a>
               <a
                 href="mailto:info@abhailephysiotherapy.com"
-                className="relative p-3 text-gray-600 hover:text-white rounded-2xl transition-all duration-500 transform hover:scale-125 group overflow-hidden"
+                className="p-2 text-gray-600 hover:text-red-600 rounded-lg transition-all duration-200"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-500 transform scale-0 group-hover:scale-100"></div>
-                <Mail size={18} className="relative z-10 transition-all duration-300 group-hover:rotate-12" />
+                <Mail size={16} />
               </a>
               <a
                 href="https://wa.me/911234567890"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="relative p-3 text-gray-600 hover:text-white rounded-2xl transition-all duration-500 transform hover:scale-125 group overflow-hidden"
+                className="p-2 text-gray-600 hover:text-green-600 rounded-lg transition-all duration-200"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl opacity-0 group-hover:opacity-100 transition-all duration-500 transform scale-0 group-hover:scale-100"></div>
-                <WhatsAppIcon size={18} className="relative z-10 transition-all duration-300 group-hover:rotate-12" />
+                <WhatsAppIcon size={16} />
               </a>
             </div>
           </nav>
 
-          {/* <CHANGE> Enhanced desktop auth section with more rounded design */}
-          <div className="hidden md:flex items-center space-x-4">
-            {user ? (
-              <div className="relative">
-                <button
-                  onClick={toggleUserMenu}
-                  className="flex cursor-pointer items-center space-x-3 text-gray-700 hover:text-[#7ce3b1] px-5 py-3 rounded-2xl hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 transition-all duration-500 group transform hover:scale-105 hover:shadow-lg"
-                >
-                  <div className="w-12 h-12 bg-gradient-to-br from-[#7ce3b1] to-[#6dd4a2] rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-500 group-hover:scale-110">
-                    <span className="text-white font-bold text-sm">
-                      {user.firstName?.charAt(0)?.toUpperCase()}
-                      {user.lastName?.charAt(0)?.toUpperCase()}
-                    </span>
-                  </div>
-                  <span className="font-medium">{`${user.firstName} ${user.lastName}`}</span>
-                </button>
+                     {/* Desktop Auth Section */}
+           <div className="hidden md:flex items-center space-x-3">
+             {user ? (
+               <div className="relative">
+                 <button
+                   ref={userButtonRef}
+                   onClick={toggleUserMenu}
+                   className="flex items-center space-x-2 text-gray-700 hover:text-emerald-600 px-3 py-2 rounded-lg hover:bg-gray-50 transition-all duration-200 group"
+                 >
+                   <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center group-hover:bg-emerald-700 transition-all duration-200">
+                     <span className="text-white font-medium text-sm">
+                       {user.firstName?.charAt(0)?.toUpperCase()}
+                       {user.lastName?.charAt(0)?.toUpperCase()}
+                     </span>
+                   </div>
+                   <span className="font-medium text-sm group-hover:text-emerald-600 transition-all duration-200">{`${user.firstName} ${user.lastName}`}</span>
+                 </button>
 
-                {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-3 w-72 bg-white rounded-3xl shadow-2xl border border-gray-100 py-3 z-50 animate-in slide-in-from-top-2 duration-300 backdrop-blur-sm">
-                    <div className="px-6 py-4 border-b border-gray-100">
-                      {user.role && (
-                        <p className="text-xs text-gray-400 capitalize font-medium bg-gray-50 px-3 py-1 rounded-full inline-block">
-                          {user.role.name}
-                        </p>
-                      )}
-                    </div>
+                                 {isUserMenuOpen && (
+                   <div 
+                     ref={userMenuRef}
+                     className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50 animate-in slide-in-from-top-2 duration-200"
+                   >
+                     <div className="px-4 py-2 border-b border-gray-100">
+                       {user.role && (
+                         <p className="text-xs text-gray-500 capitalize font-medium">
+                           {user.role.name}
+                         </p>
+                       )}
+                     </div>
 
-                    <div className="py-2">
-                      <a href="/my-bookings" className="w-full text-left px-6 py-4 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 hover:text-blue-700 flex items-center space-x-4 transition-all duration-300 group rounded-2xl mx-3">
-                        <div className="p-2 bg-blue-100 rounded-xl group-hover:bg-blue-200 transition-all duration-300">
-                          <Calendar className="h-4 w-4 group-hover:scale-110 transition-transform duration-300" />
-                        </div>
-                        <span className="font-medium">My Bookings</span>
-                      </a>
-                    </div>
-                    <div className="py-2">
-                      <a href="/dashboard/profile" className="w-full text-left px-6 py-4 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-green-50 hover:to-green-100 hover:text-green-700 flex items-center space-x-4 transition-all duration-300 group rounded-2xl mx-3">
-                        <div className="p-2 bg-green-100 rounded-xl group-hover:bg-green-200 transition-all duration-300">
-                          <User className="h-4 w-4 group-hover:scale-110 transition-transform duration-300" />
-                        </div>
-                        <span className="font-medium">Profile</span>
-                      </a>
-                    </div>
-                    <div className="border-t border-gray-100 mt-2 pt-2">
-                      <button
-                        onClick={handleLogout}
-                        className="w-full text-left px-6 py-4 text-sm text-red-600 hover:bg-gradient-to-r hover:from-red-50 hover:to-red-100 flex items-center space-x-4 cursor-pointer transition-all duration-300 group rounded-2xl mx-3"
-                      >
-                        <div className="p-2 bg-red-100 rounded-xl group-hover:bg-red-200 transition-all duration-300">
-                          <LogOut className="h-4 w-4 group-hover:scale-110 transition-transform duration-300" />
-                        </div>
-                        <span className="font-medium">Logout</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
+                     <div className="py-1">
+                       <a 
+                         href="/dashboard" 
+                         className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 flex items-center space-x-3 transition-all duration-200 group"
+                       >
+                         <Calendar className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
+                         <span>Dashboard</span>
+                       </a>
+                     </div>
+                     <div className="border-t border-gray-100 mt-1 pt-1">
+                       <button
+                         onClick={handleLogout}
+                         className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-3 cursor-pointer transition-all duration-200 group"
+                       >
+                         <LogOut className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
+                         <span>Logout</span>
+                       </button>
+                     </div>
+                   </div>
+                 )}
               </div>
             ) : (
               <>
                 <a
                   href="/login"
-                  className="text-gray-700 hover:text-[#7ce3b1] px-6 py-3 font-medium transition-all duration-500 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 rounded-2xl transform hover:scale-105"
+                  className="text-gray-700 hover:text-emerald-600 px-4 py-2 font-medium transition-all duration-200 hover:bg-gray-50 rounded-lg"
                 >
                   Sign In
                 </a>
                 <a
                   href="/find-therapist"
-                  className="bg-gradient-to-r from-emerald-600 to-[#6dd4a2] hover:from-[#6dd4a2] hover:to-emerald-600 text-white px-8 py-3 rounded-2xl font-medium transition-all duration-500 transform hover:scale-110 hover:shadow-xl active:scale-95 hover:rotate-1"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg font-medium transition-all duration-200"
                 >
                   Book Now
                 </a>
@@ -206,79 +218,86 @@ const Header = ({ user = null }) => {
             )}
           </div>
 
-          {/* <CHANGE> Enhanced mobile menu button with better rounded design */}
-          <button
-            onClick={toggleMenu}
-            className="md:hidden p-3 rounded-2xl hover:bg-gradient-to-r hover:from-gray-100 hover:to-gray-200 transition-all duration-500 transform hover:scale-110 active:scale-95 hover:shadow-lg"
-          >
-            <div className="relative w-6 h-6">
-              <Menu className={`h-6 w-6 absolute transition-all duration-500 ${isMenuOpen ? 'opacity-0 rotate-180 scale-75' : 'opacity-100 rotate-0 scale-100'}`} />
-              <X className={`h-6 w-6 absolute transition-all duration-500 ${isMenuOpen ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-180 scale-75'}`} />
-            </div>
-          </button>
+                     {/* Mobile Menu Button */}
+           <button
+             onClick={toggleMenu}
+             className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-all duration-200"
+           >
+             <div className="relative w-6 h-6">
+               <Menu className={`h-6 w-6 absolute transition-all duration-200 ${isMenuOpen ? 'opacity-0 rotate-90 scale-75' : 'opacity-100 rotate-0 scale-100'}`} />
+               <X className={`h-6 w-6 absolute transition-all duration-200 ${isMenuOpen ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-75'}`} />
+             </div>
+           </button>
         </div>
 
-        {/* <CHANGE> Enhanced mobile navigation with better rounded design */}
-        <div className={`md:hidden overflow-hidden transition-all duration-500 ease-in-out ${isMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
-          <div className="py-4 border-t border-gray-100">
-            <nav className="flex flex-col space-y-2">
-              <a 
-                href="/find-therapist" 
-                className="flex items-center space-x-4 text-gray-700 hover:text-white hover:bg-gradient-to-r hover:from-[#7ce3b1] hover:to-[#6dd4a2] px-5 py-4 rounded-2xl transition-all duration-500 group transform hover:scale-105 hover:shadow-lg mx-2"
-              >
-                <div className="p-2 bg-gray-100 rounded-xl group-hover:bg-white/20 transition-all duration-300">
-                  <Search size={18} className="group-hover:scale-125 group-hover:rotate-12 transition-all duration-300" />
-                </div>
-                <span className="font-medium">Find Therapists</span>
-              </a>
-              <a 
-                href="/services" 
-                className="flex items-center space-x-4 text-gray-700 hover:text-white hover:bg-gradient-to-r hover:from-[#7ce3b1] hover:to-[#6dd4a2] px-5 py-4 rounded-2xl transition-all duration-500 group transform hover:scale-105 hover:shadow-lg mx-2"
-              >
-                <div className="p-2 bg-gray-100 rounded-xl group-hover:bg-white/20 transition-all duration-300">
-                  <Briefcase size={18} className="group-hover:scale-125 group-hover:rotate-12 transition-all duration-300" />
-                </div>
-                <span className="font-medium">Services</span>
-              </a>
-              <a 
-                href="/about" 
-                className="flex items-center space-x-4 text-gray-700 hover:text-white hover:bg-gradient-to-r hover:from-[#7ce3b1] hover:to-[#6dd4a2] px-5 py-4 rounded-2xl transition-all duration-500 group transform hover:scale-105 hover:shadow-lg mx-2"
-              >
-                <div className="p-2 bg-gray-100 rounded-xl group-hover:bg-white/20 transition-all duration-300">
-                  <Info size={18} className="group-hover:scale-125 group-hover:rotate-12 transition-all duration-300" />
-                </div>
-                <span className="font-medium">About</span>
-              </a>
-              <a 
-                href="/contact" 
-                className="flex items-center space-x-4 text-gray-700 hover:text-white hover:bg-gradient-to-r hover:from-[#7ce3b1] hover:to-[#6dd4a2] px-5 py-4 rounded-2xl transition-all duration-500 group transform hover:scale-105 hover:shadow-lg mx-2"
-              >
-                <div className="p-2 bg-gray-100 rounded-xl group-hover:bg-white/20 transition-all duration-300">
-                  <Contact size={18} className="group-hover:scale-125 group-hover:rotate-12 transition-all duration-300" />
-                </div>
-                <span className="font-medium">Contact</span>
-              </a>
-              
-              {/* <CHANGE> Enhanced mobile auth section */}
-              {!user && (
-                <div className="pt-4 border-t border-gray-100 mt-4 space-y-3 mx-2">
-                  <a
-                    href="/login"
-                    className="block text-center text-gray-700 hover:text-[#7ce3b1] px-6 py-3 font-medium transition-all duration-500 hover:bg-gradient-to-r hover:from-gray-50 hover:to-gray-100 rounded-2xl transform hover:scale-105"
-                  >
-                    Sign In
-                  </a>
-                  <a
-                    href="/find-therapist"
-                    className="block text-center bg-gradient-to-r from-emerald-600 to-[#6dd4a2] hover:from-[#6dd4a2] hover:to-emerald-600 text-white px-8 py-4 rounded-2xl font-medium transition-all duration-500 transform hover:scale-105 active:scale-95 hover:shadow-xl"
-                  >
-                    Book Now
-                  </a>
-                </div>
-              )}
-            </nav>
-          </div>
-        </div>
+                 {/* Mobile Navigation */}
+         <div className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${isMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+           <div className="py-4 border-t border-gray-100">
+             <nav className="flex flex-col space-y-1">
+               <a 
+                 href="/find-therapist" 
+                 className="flex items-center space-x-3 text-gray-700 hover:text-emerald-600 hover:bg-gray-50 px-4 py-3 rounded-lg transition-all duration-200 group"
+               >
+                 <Search size={18} className="group-hover:scale-110 transition-transform duration-200" />
+                 <span className="font-medium">Find Therapists</span>
+               </a>
+               <a 
+                 href="/services" 
+                 className="flex items-center space-x-3 text-gray-700 hover:text-emerald-600 hover:bg-gray-50 px-4 py-3 rounded-lg transition-all duration-200 group"
+               >
+                 <Briefcase size={18} className="group-hover:scale-110 transition-transform duration-200" />
+                 <span className="font-medium">Services</span>
+               </a>
+               <a 
+                 href="/about" 
+                 className="flex items-center space-x-3 text-gray-700 hover:text-emerald-600 hover:bg-gray-50 px-4 py-3 rounded-lg transition-all duration-200 group"
+               >
+                 <Info size={18} className="group-hover:scale-110 transition-transform duration-200" />
+                 <span className="font-medium">About</span>
+               </a>
+               <a 
+                 href="/blog" 
+                 className="flex items-center space-x-3 text-gray-700 hover:text-emerald-600 hover:bg-gray-50 px-4 py-3 rounded-lg transition-all duration-200 group"
+               >
+                 <div className="w-5 h-5 group-hover:scale-110 transition-transform duration-200">
+                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                     <polyline points="14,2 14,8 20,8"/>
+                     <line x1="16" y1="13" x2="8" y2="13"/>
+                     <line x1="16" y1="17" x2="8" y2="17"/>
+                     <polyline points="10,9 9,9 8,9"/>
+                   </svg>
+                 </div>
+                 <span className="font-medium">Blog</span>
+               </a>
+               <a 
+                 href="/contact" 
+                 className="flex items-center space-x-3 text-gray-700 hover:text-emerald-600 hover:bg-gray-50 px-4 py-3 rounded-lg transition-all duration-200 group"
+               >
+                 <Contact size={18} className="group-hover:scale-110 transition-transform duration-200" />
+                 <span className="font-medium">Contact</span>
+               </a>
+               
+               {/* Mobile Auth Section */}
+               {!user && (
+                 <div className="pt-4 border-t border-gray-100 mt-4 space-y-2">
+                   <a
+                     href="/login"
+                     className="block text-center text-gray-700 hover:text-emerald-600 px-4 py-3 font-medium transition-all duration-200 hover:bg-gray-50 rounded-lg"
+                   >
+                     Sign In
+                   </a>
+                   <a
+                     href="/find-therapist"
+                     className="block text-center bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200"
+                   >
+                     Book Now
+                   </a>
+                 </div>
+               )}
+             </nav>
+           </div>
+         </div>
       </div>
     </header>
   );

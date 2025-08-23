@@ -13,6 +13,12 @@ const nextConfig = {
                 hostname: 'unsplash.com',
                 port: '',
                 pathname: '/**',
+            },
+            {
+                protocol: 'https',
+                hostname: 'cdn-imgix.headout.com',
+                port: '',
+                pathname: '/**',
             }
         ],
     },

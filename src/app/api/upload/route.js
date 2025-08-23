@@ -10,6 +10,7 @@ export async function POST(request) {
     
     const file = formData.get('file')
     const fileType = formData.get('fileType')
+    const folder = formData.get('folder') || 'general'
 
     if (!file) {
       return NextResponse.json(
@@ -22,8 +23,8 @@ export async function POST(request) {
     const ext = path.extname(file.name)
     const fileName = `${fileType}_${Date.now()}_${uuidv4()}${ext}`
     
-    // Create upload directory
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads')
+    // Create upload directory with folder structure
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads', folder)
     if (!existsSync(uploadDir)) {
       await mkdir(uploadDir, { recursive: true })
     }
@@ -34,10 +35,11 @@ export async function POST(request) {
     const buffer = Buffer.from(bytes)
     await writeFile(filePath, buffer)
 
-    const relativePath = `/uploads/${fileName}`
+    const relativePath = `/uploads/${folder}/${fileName}`
 
     return NextResponse.json({
       success: true,
+      url: relativePath,
       filePath: relativePath,
       fileName: fileName,
       message: 'File uploaded successfully'

@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import PatientDashboardLayout from '../../components/PatientDashboardLayout';
 import { Search, MapPin, Star, Calendar, Clock, Filter } from 'lucide-react';
 import Toast from '../../components/ui/Toast';
-import { getAllAvailablePhysiotherapists, getAllSpecializations, getAllCities } from '../../lib/actions/physiotherapist';
-import { createBooking } from '../../lib/actions/booking';
+import { getAllAvailablePhysiotherapists, getAllSpecializations, getAllCities } from '../../../lib/actions/physiotherapist';
+import { createBooking } from '../../../lib/actions/booking';
 
 const BookAppointmentPage = () => {
   const [therapists, setTherapists] = useState([]);
