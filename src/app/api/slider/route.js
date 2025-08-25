@@ -3,12 +3,13 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export async function GET() {
+export async function GET(request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const isAdmin = searchParams.get('admin') === 'true';
+
     const slides = await prisma.sliderSlide.findMany({
-      where: {
-        isActive: true,
-      },
+      where: isAdmin ? {} : { isActive: true },
       orderBy: {
         order: 'asc',
       },
@@ -23,6 +24,7 @@ export async function GET() {
         buttonText: true,
         buttonUrl: true,
         order: true,
+        isActive: true,
       },
     });
 

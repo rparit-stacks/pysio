@@ -11,6 +11,7 @@ export default function TherapistBookingsPage() {
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState([]);
   const [error, setError] = useState(null);
+  const [updatingBooking, setUpdatingBooking] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -55,6 +56,50 @@ export default function TherapistBookingsPage() {
     setTimeout(() => {
       setLoading(false);
     }, 1000);
+  };
+
+  const handleBookingAction = async (bookingId, action) => {
+    try {
+      setUpdatingBooking(bookingId);
+      
+      const { confirmBooking, declineBooking, completeBooking } = await import("@/lib/actions/booking");
+      
+      let result;
+      switch (action) {
+        case 'confirm':
+          result = await confirmBooking(bookingId);
+          break;
+        case 'decline':
+          result = await declineBooking(bookingId);
+          break;
+        case 'complete':
+          result = await completeBooking(bookingId);
+          break;
+        default:
+          throw new Error('Invalid action');
+      }
+
+      if (result.success) {
+        // Update the booking in the local state
+        setBookings(prevBookings => 
+          prevBookings.map(booking => 
+            booking.id === bookingId 
+              ? { ...booking, status: result.data.status.name }
+              : booking
+          )
+        );
+        
+        // Show success message
+        alert(`Booking ${action}ed successfully!`);
+      } else {
+        alert(`Failed to ${action} booking: ${result.error}`);
+      }
+    } catch (error) {
+      console.error(`Error ${action}ing booking:`, error);
+      alert(`Error ${action}ing booking. Please try again.`);
+    } finally {
+      setUpdatingBooking(null);
+    }
   };
 
   if (loading) {
@@ -115,7 +160,7 @@ export default function TherapistBookingsPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-3">
                         <User className="h-5 w-5 text-gray-400" />
-                        <span className="font-semibold text-gray-900 text-lg">{booking.patient.name}</span>
+                        <span className="font-semibold text-gray-900 text-lg">{booking.patient.firstName} {booking.patient.lastName}</span>
                         <span className={`px-3 py-1 text-sm rounded-full ${
                           booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
                           booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
@@ -126,29 +171,53 @@ export default function TherapistBookingsPage() {
                         </span>
                       </div>
                       
+                      <div className="mb-3">
+                        <p className="text-sm text-gray-600">
+                          <strong>Booking Ref:</strong> {booking.bookingReference}
+                          {booking.treatmentType && (
+                            <span className="ml-4">
+                              <strong>Treatment:</strong> {booking.treatmentType}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div className="flex items-center gap-2 text-gray-600">
                           <Calendar className="h-4 w-4" />
-                          <span>{booking.date}</span>
+                          <span>{new Date(booking.appointmentDate).toLocaleDateString()}</span>
                         </div>
                         <div className="flex items-center gap-2 text-gray-600">
                           <Clock className="h-4 w-4" />
-                          <span>{booking.time}</span>
+                          <span>{booking.appointmentTime}</span>
                         </div>
                         <div className="flex items-center gap-2 text-gray-600">
                           <MapPin className="h-4 w-4" />
-                          <span>{booking.clinic}</span>
+                          <span>{booking.clinic?.name || 'Unknown Clinic'}</span>
                         </div>
                         <div className="flex items-center gap-2 text-gray-600">
                           <Phone className="h-4 w-4" />
-                          <span>{booking.patient.phone}</span>
+                          <span>{booking.patient.phone || 'No phone'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <span className="text-emerald-600 font-bold">€</span>
+                          <span>€{booking.totalAmount || '0'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            booking.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                            booking.paymentStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            Payment: {booking.paymentStatus || 'unpaid'}
+                          </span>
                         </div>
                       </div>
 
-                      {booking.notes && (
+                      {booking.patientNotes && (
                         <div className="bg-gray-50 rounded-lg p-3 mb-4">
                           <p className="text-sm text-gray-700">
-                            <strong>Patient Notes:</strong> {booking.notes}
+                            <strong>Patient Notes:</strong> {booking.patientNotes}
                           </p>
                         </div>
                       )}
@@ -157,17 +226,29 @@ export default function TherapistBookingsPage() {
                     <div className="flex gap-2 ml-4">
                       {booking.status === 'pending' && (
                         <>
-                          <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm">
-                            Confirm
+                          <button 
+                            onClick={() => handleBookingAction(booking.id, 'confirm')}
+                            disabled={updatingBooking === booking.id}
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {updatingBooking === booking.id ? 'Confirming...' : 'Confirm'}
                           </button>
-                          <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm">
-                            Decline
+                          <button 
+                            onClick={() => handleBookingAction(booking.id, 'decline')}
+                            disabled={updatingBooking === booking.id}
+                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {updatingBooking === booking.id ? 'Declining...' : 'Decline'}
                           </button>
                         </>
                       )}
                       {booking.status === 'confirmed' && (
-                        <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
-                          Mark Complete
+                        <button 
+                          onClick={() => handleBookingAction(booking.id, 'complete')}
+                          disabled={updatingBooking === booking.id}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {updatingBooking === booking.id ? 'Completing...' : 'Mark Complete'}
                         </button>
                       )}
                     </div>

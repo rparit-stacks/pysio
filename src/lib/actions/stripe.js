@@ -5,12 +5,6 @@ import Stripe from 'stripe'
 import { createBooking } from './booking.js'
 
 const prisma = new PrismaClient()
-
-// Check if Stripe key is available (only log, don't throw)
-if (!process.env.STRIPE_SECRET_KEY) {
-  console.error('STRIPE_SECRET_KEY is not set in environment variables');
-}
-
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2022-11-15' })
 
 export async function createBookingAndPayment({
@@ -50,8 +44,8 @@ export async function createBookingAndPayment({
       throw new Error(booking.error || 'Booking creation failed')
     }
 
-    // 2️⃣ Create Stripe Checkout Session with timeout
-    const sessionPromise = stripe.checkout.sessions.create({
+    // 2️⃣ Create Stripe Checkout Session
+    const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
         {
@@ -72,17 +66,10 @@ export async function createBookingAndPayment({
       metadata: {
         bookingId: booking.data.id.toString(),
       },
-    });
+    })
 
-    // Add 10 second timeout
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Stripe session creation timeout')), 10000)
-    );
-
-    const session = await Promise.race([sessionPromise, timeoutPromise]);
-
-    // 3️⃣ Save payment as pending with both IDs (async, don't wait)
-    prisma.payment.create({
+    // 3️⃣ Save payment as pending with both IDs
+    await prisma.payment.create({
       data: {
         bookingId: booking.data.id,
         paymentMethodId: 1,
@@ -93,7 +80,7 @@ export async function createBookingAndPayment({
         status: 'pending',
         processedAt: null,
       },
-    }).catch(err => console.error('Payment record creation error:', err))
+    })
 
     return {
       success: true,
@@ -102,17 +89,7 @@ export async function createBookingAndPayment({
     }
   } catch (error) {
     console.error('Booking & Payment error:', error)
-    
-    // Provide more specific error messages
-    if (error.message?.includes('Stripe')) {
-      return { success: false, error: 'Payment gateway error: ' + error.message }
-    } else if (error.message?.includes('booking')) {
-      return { success: false, error: 'Booking error: ' + error.message }
-    } else if (error.message?.includes('Missing required')) {
-      return { success: false, error: 'Missing booking details: ' + error.message }
-    } else {
-      return { success: false, error: 'Payment session creation failed: ' + error.message }
-    }
+    return { success: false, error: error.message }
   }
 }
 

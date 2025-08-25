@@ -5,6 +5,7 @@ import AdminDashboardLayout from '../../components/AdminDashboardLayout';
 const SliderManagement = () => {
   const [slides, setSlides] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [editingSlide, setEditingSlide] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
@@ -20,6 +21,9 @@ const SliderManagement = () => {
   });
 
   const [showForm, setShowForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [uploadingDesktop, setUploadingDesktop] = useState(false);
+  const [uploadingMobile, setUploadingMobile] = useState(false);
 
   useEffect(() => {
     fetchSlides();
@@ -27,11 +31,18 @@ const SliderManagement = () => {
 
   const fetchSlides = async () => {
     try {
-      const response = await fetch('/api/slider');
+      setError(null);
+      const response = await fetch('/api/slider?admin=true');
       const data = await response.json();
-      setSlides(data.slides || []);
+      
+      if (response.ok) {
+        setSlides(data.slides || []);
+      } else {
+        setError(data.error || 'Failed to fetch slides');
+      }
     } catch (error) {
       console.error('Error fetching slides:', error);
+      setError('Failed to fetch slides. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -39,6 +50,14 @@ const SliderManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate that desktop image is uploaded
+    if (!formData.mediaUrl) {
+      alert('Please upload a desktop image before saving the slide.');
+      return;
+    }
+    
+    setSubmitting(true);
     
     try {
       const url = editingSlide ? `/api/slider/${editingSlide.id}` : '/api/slider';
@@ -51,6 +70,8 @@ const SliderManagement = () => {
         },
         body: JSON.stringify(formData),
       });
+
+      const data = await response.json();
 
       if (response.ok) {
         setEditingSlide(null);
@@ -68,9 +89,15 @@ const SliderManagement = () => {
           isActive: true
         });
         fetchSlides();
+        alert(editingSlide ? 'Slide updated successfully!' : 'Slide created successfully!');
+      } else {
+        alert('Error: ' + (data.error || 'Failed to save slide'));
       }
     } catch (error) {
       console.error('Error saving slide:', error);
+      alert('Failed to save slide. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -125,11 +152,93 @@ const SliderManagement = () => {
     }
   };
 
+  const handleImageUpload = async (file, type) => {
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file.');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      alert('Image size should be less than 5MB.');
+      return;
+    }
+
+    const setUploading = type === 'desktop' ? setUploadingDesktop : setUploadingMobile;
+    setUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('fileType', 'sliderImage');
+      formData.append('folder', 'slider-images');
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        if (type === 'desktop') {
+          setFormData(prev => ({ ...prev, mediaUrl: result.url }));
+        } else {
+          setFormData(prev => ({ ...prev, mobileMediaUrl: result.url }));
+        }
+        alert('Image uploaded successfully!');
+      } else {
+        alert('Failed to upload image: ' + (result.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      alert('Failed to upload image: ' + error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   if (loading) {
     return (
       <AdminDashboardLayout>
         <div className="flex items-center justify-center h-64">
           <div className="text-gray-500">Loading...</div>
+        </div>
+      </AdminDashboardLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <AdminDashboardLayout>
+        <div className="p-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-red-800">Error</h3>
+                <div className="mt-2 text-sm text-red-700">
+                  <p>{error}</p>
+                </div>
+                <div className="mt-4">
+                  <button
+                    onClick={fetchSlides}
+                    className="bg-red-100 text-red-800 px-3 py-2 rounded-md text-sm font-medium hover:bg-red-200"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </AdminDashboardLayout>
     );
@@ -264,38 +373,96 @@ const SliderManagement = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                             <div>
-                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                   Media URL (Desktop)
-                 </label>
-                 <input
-                   type="url"
-                   value={formData.mediaUrl}
-                   onChange={(e) => setFormData({...formData, mediaUrl: e.target.value})}
-                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                   placeholder="https://example.com/image.jpg or /slider/image.jpg"
-                   required
-                 />
-                 <p className="text-xs text-gray-500 mt-1">
-                   Supports both external URLs and local paths
-                 </p>
-               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Desktop Image
+                </label>
+                <div className="space-y-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleImageUpload(e.target.files[0], 'desktop')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    disabled={uploadingDesktop}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Recommended: 1920x1080px, max 5MB
+                  </p>
+                  {uploadingDesktop && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                      Uploading...
+                    </div>
+                  )}
+                  {formData.mediaUrl && (
+                    <div className="mt-2">
+                      <p className="text-xs text-gray-500 mb-1">Current image:</p>
+                      <div className="relative inline-block">
+                        <img 
+                          src={formData.mediaUrl} 
+                          alt="Desktop preview" 
+                          className="w-20 h-20 object-cover rounded border"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, mediaUrl: '' }))}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                          title="Remove image"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
               
-                             <div>
-                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                   Media URL (Mobile) - Optional
-                 </label>
-                 <input
-                   type="url"
-                   value={formData.mobileMediaUrl}
-                   onChange={(e) => setFormData({...formData, mobileMediaUrl: e.target.value})}
-                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                   placeholder="https://example.com/mobile-image.jpg"
-                 />
-                 <p className="text-xs text-gray-500 mt-1">
-                   Leave empty to use desktop image for mobile
-                 </p>
-               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mobile Image (Optional)
+                </label>
+                <div className="space-y-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => handleImageUpload(e.target.files[0], 'mobile')}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    disabled={uploadingMobile}
+                  />
+                  <p className="text-xs text-gray-500">
+                    Recommended: 768x1024px, max 5MB
+                  </p>
+                  {uploadingMobile && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+                      Uploading...
+                    </div>
+                  )}
+                  {formData.mobileMediaUrl && (
+                    <div className="mt-2">
+                      <p className="text-xs text-gray-500 mb-1">Current image:</p>
+                      <div className="relative inline-block">
+                        <img 
+                          src={formData.mobileMediaUrl} 
+                          alt="Mobile preview" 
+                          className="w-20 h-20 object-cover rounded border"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, mobileMediaUrl: '' }))}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                          title="Remove image"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-500">
+                    Leave empty to use desktop image for mobile
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -337,9 +504,17 @@ const SliderManagement = () => {
                </button>
                <button
                  type="submit"
-                 className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2 rounded-lg"
+                 disabled={submitting}
+                 className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white px-6 py-2 rounded-lg flex items-center gap-2"
                >
-                 {editingSlide ? 'Update Slide' : 'Add Slide'}
+                 {submitting ? (
+                   <>
+                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                     {editingSlide ? 'Updating...' : 'Adding...'}
+                   </>
+                 ) : (
+                   editingSlide ? 'Update Slide' : 'Add Slide'
+                 )}
                </button>
              </div>
            </form>
@@ -362,12 +537,15 @@ const SliderManagement = () => {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Title
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Media Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
+                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                     Media Type
+                   </th>
+                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                     Preview
+                   </th>
+                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                     Status
+                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -389,12 +567,21 @@ const SliderManagement = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {slide.mediaType}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                         {slide.mediaType}
+                       </span>
+                     </td>
+                     <td className="px-6 py-4 whitespace-nowrap">
+                       {slide.mediaUrl && (
+                         <img 
+                           src={slide.mediaUrl} 
+                           alt="Slide preview" 
+                           className="w-16 h-12 object-cover rounded border"
+                         />
+                       )}
+                     </td>
+                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
                         onClick={() => toggleActive(slide.id, slide.isActive)}
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${

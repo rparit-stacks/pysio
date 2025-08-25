@@ -457,7 +457,7 @@ export async function getBookingsByPhysiotherapist(physiotherapistId) {
     return { success: true, data: formattedBookings }
   } catch (error) {
     console.error('Error fetching physiotherapist bookings:', error)
-    return { success: false, error: 'Failed to fetch bookings' }
+    return { success: false, error: 'Failed to fetch bookings', details: error.message }
   } finally {
     await prisma.$disconnect()
   }
@@ -1011,4 +1011,95 @@ export async function therapistDeleteBooking(bookingId, therapistUserId) {
   } finally {
     await prisma.$disconnect();
   }
+}
+
+export async function updateBookingStatus(bookingId, newStatus) {
+  try {
+    console.log(`Updating booking ${bookingId} status to: ${newStatus}`);
+
+    // Get the status ID based on the status name
+    const status = await prisma.bookingStatus.findFirst({
+      where: { name: newStatus.toLowerCase() }
+    });
+
+    if (!status) {
+      return { success: false, error: `Invalid status: ${newStatus}` };
+    }
+
+    // Update the booking status
+    const updatedBooking = await prisma.booking.update({
+      where: { id: Number(bookingId) },
+      data: { 
+        statusId: status.id,
+        updatedAt: new Date()
+      },
+      include: {
+        patient: {
+          select: {
+            firstName: true,
+            lastName: true,
+            email: true
+          }
+        },
+        physiotherapist: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                email: true
+              }
+            }
+          }
+        },
+        clinic: {
+          select: {
+            name: true,
+            addressLine1: true,
+            city: {
+              select: {
+                name: true
+              }
+            }
+          }
+        },
+        status: {
+          select: {
+            name: true
+          }
+        }
+      }
+    });
+
+    console.log(`✅ Booking ${bookingId} status updated to: ${newStatus}`);
+
+    // Send notification to patient about status change
+    await createNotification(
+      updatedBooking.patient.id,
+      `Booking ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`,
+      `Your booking ${updatedBooking.bookingReference} has been ${newStatus}.`,
+      'booking_status'
+    );
+
+    return { 
+      success: true, 
+      message: `Booking ${newStatus} successfully`,
+      data: updatedBooking
+    };
+  } catch (error) {
+    console.error('Error updating booking status:', error);
+    return { success: false, error: `Failed to update booking status: ${error.message}` };
+  }
+}
+
+export async function confirmBooking(bookingId) {
+  return await updateBookingStatus(bookingId, 'confirmed');
+}
+
+export async function declineBooking(bookingId) {
+  return await updateBookingStatus(bookingId, 'cancelled');
+}
+
+export async function completeBooking(bookingId) {
+  return await updateBookingStatus(bookingId, 'completed');
 }

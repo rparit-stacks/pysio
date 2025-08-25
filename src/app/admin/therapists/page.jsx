@@ -588,7 +588,7 @@ const AdminTherapistsPage = () => {
                             <MapPin className="h-4 w-4 mr-2 text-gray-400" />
                             <div>
                               <p className="text-sm font-medium text-gray-900">{clinic.name}</p>
-                              <p className="text-xs text-gray-500">{clinic.city}</p>
+                              <p className="text-xs text-gray-500">{clinic.city?.name || 'Unknown City'}</p>
                             </div>
                           </div>
                           {clinic.isPrimary && (

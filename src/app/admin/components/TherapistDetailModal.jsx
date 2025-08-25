@@ -199,7 +199,7 @@ export default function TherapistDetailModal({ therapist, isOpen, onClose }) {
                       <div key={index} className="bg-white rounded p-3 border">
                         <h5 className="font-medium text-gray-900">{clinic.name}</h5>
                         <p className="text-sm text-gray-600">{clinic.address}</p>
-                        <p className="text-sm text-gray-500">{clinic.city}, {clinic.county}</p>
+                        <p className="text-sm text-gray-500">{clinic.city?.name || 'Unknown City'}, {clinic.county || 'Unknown County'}</p>
                       </div>
                     ))}
                   </div>

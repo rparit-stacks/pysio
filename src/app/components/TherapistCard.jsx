@@ -5,10 +5,11 @@ import { Phone, Mail, MapPin, X, ChevronLeft, ChevronRight, Clock } from "lucide
 import { useRouter } from 'next/navigation'
 import { createBookingAndPayment } from "@/lib/actions/stripe";
 import { getCurrentUser } from "@/lib/auth";
-import AppointmentDatePicker from "./AppointmentDatePicker";
-import { getFilteredAvailableSlots } from "@/lib/actions/availability";
+
+
 
 export default function TherapistCard({ therapist }) {
+  console.log('🎯 TherapistCard loaded for therapist:', { id: therapist.id, name: therapist.user?.firstName, lastName: therapist.user?.lastName });
 
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -121,10 +122,37 @@ export default function TherapistCard({ therapist }) {
 
           const session = await Promise.race([bookingPromise, timeoutPromise]);
 
-          if (session?.success && session?.checkoutUrl) {
-            setPaymentStep('redirecting');
-            // Redirect immediately to payment gateway
-            window.location.href = session.checkoutUrl;
+          if (session?.success) {
+            // Handle auto-payment success
+            if (session?.autoPayment) {
+              setPaymentStep('success');
+              alert(`✅ Booking successful! Auto-payment completed.\nBooking Reference: ${session.bookingId}\nRedirecting to success page...`);
+              window.location.href = session.checkoutUrl;
+              return;
+            }
+            
+            // Handle skipped payment
+            if (session?.skipPayment) {
+              setPaymentStep('success');
+              alert(`✅ Booking successful! ${session.message}\nBooking Reference: ${session.bookingId}`);
+              setShowBookingModal(false);
+              setSelectedSlot(null);
+              setSelectedDate(null);
+              return;
+            }
+            
+            // Handle normal payment flow
+            if (session?.checkoutUrl) {
+              setPaymentStep('redirecting');
+              // Show adjusted amount if different from original
+              if (session?.adjustedAmount && session.adjustedAmount !== totalAmount) {
+                alert(`💰 Payment amount adjusted to €${session.adjustedAmount.toFixed(2)} (original: €${totalAmount.toFixed(2)})`);
+              }
+              // Redirect immediately to payment gateway
+              window.location.href = session.checkoutUrl;
+            } else {
+              throw new Error("Failed to create payment session");
+            }
           } else {
             throw new Error(session?.error || "Failed to create payment session");
           }
@@ -209,45 +237,46 @@ export default function TherapistCard({ therapist }) {
       const year = currentMonth.getFullYear();
       const month = currentMonth.getMonth() + 1; // getMonth() returns 0-11
       
+      console.log('🔍 Fetching available dates for therapist:', therapist.id, 'year:', year, 'month:', month);
+      
       const response = await fetch(`/api/therapist/${therapist.id}/availability/month?year=${year}&month=${month}`);
       const data = await response.json();
       
+      console.log('📡 API Response:', { status: response.status, data });
+      
       if (response.ok && data.availableDates) {
+        console.log('✅ Successfully fetched available dates:', data.availableDates.length);
         setAvailableDates(new Set(data.availableDates));
       } else {
-        console.error('Failed to fetch available dates:', data.error);
+        console.error('❌ Failed to fetch available dates:', data.error);
+        console.error('❌ Response data:', data);
         // Fallback: show all future dates as available
-        const fallbackDates = new Set();
-        const today = new Date();
-        const startDate = new Date(year, month - 1, 1);
-        const endDate = new Date(year, month, 0);
-        
-        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-          if (d >= today) {
-            fallbackDates.add(d.toISOString().split('T')[0]);
-          }
-        }
-        setAvailableDates(fallbackDates);
+        generateFallbackDates();
       }
     } catch (error) {
-      console.error('Error fetching available dates:', error);
+      console.error('❌ Error fetching available dates:', error);
       // Fallback: show all future dates as available
-      const fallbackDates = new Set();
-      const today = new Date();
-      const year = currentMonth.getFullYear();
-      const month = currentMonth.getMonth() + 1;
-      const startDate = new Date(year, month - 1, 1);
-      const endDate = new Date(year, month, 0);
-      
-      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        if (d >= today) {
-          fallbackDates.add(d.toISOString().split('T')[0]);
-        }
-      }
-      setAvailableDates(fallbackDates);
+      generateFallbackDates();
     } finally {
       setFetchingDates(false);
     }
+  };
+
+  // Generate fallback dates when API fails
+  const generateFallbackDates = () => {
+    const fallbackDates = new Set();
+    const today = new Date();
+    const year = currentMonth.getFullYear();
+    const month = currentMonth.getMonth() + 1;
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0);
+    
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+      if (d >= today) {
+        fallbackDates.add(d.toISOString().split('T')[0]);
+      }
+    }
+    setAvailableDates(fallbackDates);
   };
 
   const handleDateChange = async (date) => {
@@ -258,53 +287,48 @@ export default function TherapistCard({ therapist }) {
     setFetchingSlots(true);
 
     try {
+      const dateString = date.toISOString().split('T')[0];
+      console.log('🔍 Fetching slots for therapist:', therapist.id, 'date:', dateString);
+      
       // Use the new availability API
-      const response = await fetch(`/api/therapist/${therapist.id}/availability?date=${date.toISOString().split('T')[0]}`);
+      const response = await fetch(`/api/therapist/${therapist.id}/availability?date=${dateString}`);
       const data = await response.json();
 
+      console.log('📡 Slots API Response:', { status: response.status, data });
+
       if (response.ok && data.slots) {
-        // Convert slots to display format
+        // Extract display times from the slots
         const slots = data.slots.map(slot => slot.displayTime);
-        
-        // Apply 3-hour advance booking rule for today
-        const now = new Date();
-        const selected = new Date(date);
-        selected.setHours(0, 0, 0, 0);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        let filteredSlots = slots;
-
-        if (selected < today) {
-          filteredSlots = [];
-        } else if (selected.getTime() === today.getTime()) {
-          const thresholdTime = new Date(now.getTime() + 3 * 60 * 60 * 1000); // now + 3 hours
-
-          filteredSlots = slots.filter(slot => {
-            const [time, meridian] = slot.split(' ');
-            let [hours, minutes] = time.split(':').map(Number);
-
-            if (meridian === 'PM' && hours !== 12) hours += 12;
-            if (meridian === 'AM' && hours === 12) hours = 0;
-
-            const slotDateTime = new Date(selected);
-            slotDateTime.setHours(hours, minutes, 0, 0);
-
-            return slotDateTime >= thresholdTime;
-          });
-        }
-
-        setAvailableSlots(filteredSlots);
+        console.log('✅ Successfully fetched slots:', slots.length);
+        setAvailableSlots(slots);
       } else {
-        console.error('Failed to fetch availability:', data.error);
-        setAvailableSlots([]);
+        console.error('❌ Failed to fetch availability:', data.error);
+        console.error('❌ Response data:', data);
+        // Fallback: generate default time slots
+        generateFallbackTimeSlots();
       }
     } catch (error) {
-      console.error('Error fetching availability:', error);
-      setAvailableSlots([]);
+      console.error('❌ Error fetching availability:', error);
+      // Fallback: generate default time slots
+      generateFallbackTimeSlots();
     } finally {
       setFetchingSlots(false);
     }
+  };
+
+  // Generate fallback time slots when API fails
+  const generateFallbackTimeSlots = () => {
+    const slots = [];
+    const startHour = 9; // 9 AM
+    const endHour = 17; // 5 PM
+    
+    for (let hour = startHour; hour < endHour; hour++) {
+      const time = `${hour.toString().padStart(2, '0')}:00`;
+      const displayTime = `${hour === 12 ? 12 : hour % 12 || 12}:00 ${hour >= 12 ? 'PM' : 'AM'}`;
+      slots.push(displayTime);
+    }
+    
+    setAvailableSlots(slots);
   };
 
   const navigateMonth = (direction) => {
@@ -344,10 +368,10 @@ export default function TherapistCard({ therapist }) {
             <p className="text-sm text-emerald-600 font-medium mb-2">
               {therapist.specialization || 'Specialization'}
             </p>
-            {clinic?.city && (
+            {clinic?.city?.name && (
               <div className="flex items-center gap-1 text-xs text-gray-500">
                 <MapPin className="w-3 h-3" />
-                <span>{clinic.city}</span>
+                <span>{clinic.city.name}</span>
               </div>
             )}
           </div>
@@ -460,6 +484,13 @@ export default function TherapistCard({ therapist }) {
                     <div className="text-center py-2 mb-3">
                       <div className="animate-spin w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full mx-auto"></div>
                       <p className="text-xs text-gray-500 mt-1">Checking availability...</p>
+                    </div>
+                  )}
+                  
+                  {/* Fallback indicator */}
+                  {!fetchingDates && availableDates.size === 0 && (
+                    <div className="text-center py-1 mb-2">
+                      <p className="text-xs text-gray-400">Using fallback availability</p>
                     </div>
                   )}
                   
@@ -590,6 +621,9 @@ export default function TherapistCard({ therapist }) {
                           Check their weekly schedule or try a different date
                         </div>
                       )}
+                      <div className="text-xs text-gray-400 mt-2">
+                        Showing fallback availability due to API error
+                      </div>
                     </div>
                   )}
                 </div>

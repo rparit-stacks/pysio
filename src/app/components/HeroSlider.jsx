@@ -7,19 +7,26 @@ const HeroSlider = () => {
   const [isPlaying, setIsPlaying] = useState(true);
   const [slides, setSlides] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Fetch slides from API
   useEffect(() => {
     const fetchSlides = async () => {
       try {
+        setError(null);
         const response = await fetch('/api/slider');
         const data = await response.json();
         
-        if (data.slides && data.slides.length > 0) {
+        if (response.ok && data.slides && data.slides.length > 0) {
           setSlides(data.slides);
+        } else if (response.ok && (!data.slides || data.slides.length === 0)) {
+          console.log('No slides found');
+        } else {
+          setError(data.error || 'Failed to fetch slider data');
         }
       } catch (error) {
         console.error('Error fetching slider data:', error);
+        setError('Failed to fetch slider data');
       } finally {
         setLoading(false);
       }
@@ -107,6 +114,11 @@ const HeroSlider = () => {
         </div>
       </section>
     );
+  }
+
+  if (error) {
+    console.error('Slider error:', error);
+    return null;
   }
 
   if (slides.length === 0) {

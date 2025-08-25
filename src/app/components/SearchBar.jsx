@@ -97,7 +97,7 @@ export default function SearchBar({
 
                 {item.clinics?.length > 0 && (
                   <p className="text-xs sm:text-sm text-gray-500 truncate">
-                    {item.clinics[0].name} – {item.clinics[0].city}
+                    {item.clinics[0].name} – {item.clinics[0].city?.name || 'Unknown City'}
                   </p>
                 )}
 

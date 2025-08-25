@@ -13,6 +13,41 @@ export default async function PaymentSuccess({ searchParams }) {
   const sessionId = searchParams?.session_id;
   const bookingId = searchParams?.booking_id;
 
+  // Handle auto-payment case
+  if (sessionId === 'AUTO') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-green-50 px-4">
+        <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-8 text-center">
+          <CheckCircle2 size={56} className="mx-auto mb-6 text-emerald-600" strokeWidth={1.5} />
+          <h1 className="text-4xl font-extrabold text-emerald-700 mb-3">Booking Successful!</h1>
+          <p className="text-gray-700 mb-6">Your appointment has been automatically confirmed.</p>
+
+          <div className="text-left space-y-2 max-w-xs mx-auto mb-8">
+            <p className='text-gray-700' >
+              <span className="font-semibold text-gray-700">Amount Paid:</span> €0.00 (Auto-payment)
+            </p>
+            <p>
+              <span className="font-semibold text-gray-700">Status:</span>{' '}
+              <span className="capitalize font-semibold text-emerald-600">
+                Confirmed
+              </span>
+            </p>
+            <p className='text-gray-700'>
+              <span className="font-semibold text-gray-700">Booking Reference Number:</span> {bookingId}
+            </p>
+          </div>
+
+          <Link
+            href="/my-bookings"
+            className="inline-block bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-md px-6 py-3 transition"
+          >
+            Your Bookings
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (!sessionId) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">

@@ -13,6 +13,7 @@ const PatientBookingsPage = () => {
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
   const [cancelModal, setCancelModal] = useState({ show: false, booking: null });
   const [filter, setFilter] = useState('all'); // all, pending, confirmed, completed, cancelled
+  const [statusNotifications, setStatusNotifications] = useState([]);
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -24,6 +25,23 @@ const PatientBookingsPage = () => {
         
         if (result.success) {
           setBookings(result.data);
+          
+          // Check for recent status changes and show notifications
+          const recentStatusChanges = result.data.filter(booking => {
+            // Check if booking was updated in the last 24 hours
+            const updatedAt = new Date(booking.updatedAt || booking.createdAt);
+            const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+            return updatedAt > oneDayAgo && ['confirmed', 'cancelled', 'completed'].includes(booking.status);
+          });
+          
+          if (recentStatusChanges.length > 0) {
+            setStatusNotifications(recentStatusChanges.map(booking => ({
+              id: booking.id,
+              message: `Your booking with ${booking.physiotherapist} has been ${booking.status}`,
+              status: booking.status,
+              bookingRef: booking.bookingReference
+            })));
+          }
         } else {
           setToast({
             show: true,
@@ -43,6 +61,11 @@ const PatientBookingsPage = () => {
     };
 
     fetchBookings();
+    
+    // Refresh bookings every 30 seconds to check for status updates
+    const interval = setInterval(fetchBookings, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const filteredBookings = bookings.filter(booking => {
@@ -88,11 +111,31 @@ const PatientBookingsPage = () => {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'confirmed': return 'bg-blue-100 text-blue-800';
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'confirmed': return 'bg-green-100 text-green-800 border-green-200';
+      case 'completed': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'pending': return '⏳';
+      case 'confirmed': return '✅';
+      case 'completed': return '🎯';
+      case 'cancelled': return '❌';
+      default: return '📋';
+    }
+  };
+
+  const getStatusMessage = (status) => {
+    switch (status) {
+      case 'pending': return 'Waiting for therapist confirmation';
+      case 'confirmed': return 'Booking confirmed by therapist';
+      case 'completed': return 'Session completed successfully';
+      case 'cancelled': return 'Booking has been cancelled';
+      default: return 'Status unknown';
     }
   };
 
@@ -114,6 +157,39 @@ const PatientBookingsPage = () => {
   return (
     <PatientDashboardLayout>
       <div className="space-y-6">
+        {/* Status Change Notifications */}
+        {statusNotifications.length > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <span className="text-blue-600 text-lg">🔔</span>
+                <div>
+                  <h3 className="text-sm font-medium text-blue-900">Recent Booking Updates</h3>
+                  <p className="text-sm text-blue-700">
+                    {statusNotifications.length} booking{statusNotifications.length > 1 ? 's have' : ' has'} been updated
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setStatusNotifications([])}
+                className="text-blue-400 hover:text-blue-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="mt-3 space-y-2">
+              {statusNotifications.map(notification => (
+                <div key={notification.id} className="flex items-center space-x-2 text-sm">
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(notification.status)}`}>
+                    {getStatusIcon(notification.status)} {notification.status}
+                  </span>
+                  <span className="text-blue-800">{notification.message}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-900">My Bookings</h1>
           <div className="flex space-x-2">
@@ -155,12 +231,25 @@ const PatientBookingsPage = () => {
                         <h3 className="text-lg font-semibold text-gray-900">
                           {booking.physiotherapist}
                         </h3>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
-                          {booking.status}
-                        </span>
                       </div>
-                      <p className="text-sm text-gray-600">{booking.treatmentType || 'General Treatment'}</p>
-                      <p className="text-xs text-gray-500">Ref: {booking.bookingReference}</p>
+                      
+                      {/* Enhanced Status Display */}
+                      <div className="mt-2 flex items-center space-x-3">
+                        <div className={`px-3 py-2 rounded-lg text-sm font-medium border ${getStatusColor(booking.status)} flex items-center space-x-2`}>
+                          <span className="text-lg">{getStatusIcon(booking.status)}</span>
+                          <span className="capitalize">{booking.status}</span>
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {getStatusMessage(booking.status)}
+                        </div>
+                      </div>
+                                              <p className="text-sm text-gray-600">{booking.treatmentType || 'General Treatment'}</p>
+                        <p className="text-xs text-gray-500">Ref: {booking.bookingReference}</p>
+                        {booking.updatedAt && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            Last updated: {new Date(booking.updatedAt).toLocaleString()}
+                          </p>
+                        )}
                       
                       <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">

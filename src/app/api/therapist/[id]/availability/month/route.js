@@ -6,11 +6,16 @@ export async function GET(request, { params }) {
     const { searchParams } = new URL(request.url);
     const year = searchParams.get('year');
     const month = searchParams.get('month');
-    const therapistId = params.id;
+    const therapistId = params?.id;
+
+    console.log('API Debug - params:', params);
+    console.log('API Debug - therapistId:', therapistId);
+    console.log('API Debug - year:', year);
+    console.log('API Debug - month:', month);
 
     if (!year || !month || !therapistId) {
       return NextResponse.json(
-        { error: 'Year, month and therapist ID are required' },
+        { error: 'Year, month and therapist ID are required', debug: { year, month, therapistId, params } },
         { status: 400 }
       );
     }
@@ -28,7 +33,7 @@ export async function GET(request, { params }) {
   } catch (error) {
     console.error('Error in monthly availability API:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error.message },
       { status: 500 }
     );
   }
